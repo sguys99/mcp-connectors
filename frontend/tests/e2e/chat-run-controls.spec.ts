@@ -157,7 +157,9 @@ test.describe("approval mode", () => {
     for (let i = 0; i < 3; i += 1) {
       await expect(approvalPanel(page)).toBeVisible({ timeout: 15_000 });
       await approvalPanel(page).getByRole("button", { name: "Approve" }).click();
-      await expect(approvalPanel(page)).toHaveCount(0);
+      // 다음 승인 패널이 폴링 간격보다 빨리 다시 뜰 수 있으므로(CI 에서 재현) 패널이 사라지는 순간 대신
+      // 승인한 호출이 실행을 마쳤는지(done 카드 수)로 진행을 확인한다
+      await expect(page.getByText("done", { exact: true })).toHaveCount(i + 1, { timeout: 15_000 });
     }
     // 세 번째 승인 뒤에는 반복 한도(3)를 다 써서 도구만 실행하고 끝난다
     await expect(page.getByText(/Stopped after 3 iterations/)).toBeVisible({ timeout: 15_000 });

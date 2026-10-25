@@ -64,6 +64,8 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --all-extras --dev
+      # Quick Start 와 같이 루트 .env 를 만듭니다. 시나리오 러너가 띄우는 서버가 여기서 샘플 DB 접속 정보를 읽어요
+      - run: cp .env.example .env
       - name: Start sample DB (PostgreSQL 17 + Pagila)
         run: make sample-db-up
       # conftest 는 DB 에 닿지 않으면 skip 하므로, 조용히 녹색이 되지 않게 먼저 접속을 확인합니다
