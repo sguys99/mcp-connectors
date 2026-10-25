@@ -21,6 +21,7 @@ env:
   UV_PYTHON_PREFERENCE: managed
   NODE_VERSION: "20"
   FORCE_COLOR: "1"
+  # setup-uv 는 v8 부터 major 태그(v10)를 내지 않아 전체 버전으로 고정합니다
 
 jobs:
   python-lint:
@@ -29,7 +30,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
       - run: uv sync --locked --all-extras --dev
@@ -41,7 +42,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
       - run: uv sync --locked --all-extras --dev
@@ -59,7 +60,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
       - run: uv sync --locked --all-extras --dev
@@ -114,7 +115,7 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           enable-cache: true
       # global-setup 이 make run-mock-repo-mcp, run-starter-mcp-http 로 서버를 띄웁니다
