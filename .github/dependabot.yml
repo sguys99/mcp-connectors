@@ -1,0 +1,79 @@
+# Dependabot version updates.
+# Minor and patch updates are grouped into one PR per ecosystem to keep the PR count low;
+# major updates still open one PR each so breaking changes get a separate review.
+# Commit messages follow the repo gitmoji style: "⬆️ chore(deps): ..." or "⬆️ chore(deps-dev): ...".
+# Security updates (Dependabot alerts) are enabled in the repository settings and are not limited here.
+version: 2
+
+updates:
+  # Python (uv): reads pyproject.toml and updates uv.lock
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "⬆️ chore"
+      include: "scope"
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Frontend (npm): frontend/package.json and package-lock.json
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "⬆️ chore"
+      include: "scope"
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions used in .github/workflows/
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "⬆️ chore(ci)"
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Docker base images: Dockerfile (MCP servers), frontend/Dockerfile, docker/postgres/Dockerfile
+  - package-ecosystem: "docker"
+    directories:
+      - "/"
+      - "/frontend"
+      - "/docker/postgres"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "⬆️ chore(docker)"
+    groups:
+      docker-minor-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # The project targets Python 3.12 (pyproject.toml); move to a new Python version on purpose.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # The Pagila sample DB image is built and documented for PostgreSQL 17.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]

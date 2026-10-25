@@ -1,0 +1,213 @@
+<!doctype html>
+<!--
+  GitHub social preview (1280x640). Render with: node docs/assets/social/render.mjs
+  Colors, radius and fonts follow docs/revamp/design/tokens.css, concept A, dark theme.
+  Dark reads well on both GitHub backgrounds and matches the dark-first concept A.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MCP Connectors social preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=block" rel="stylesheet">
+<style>
+  :root {
+    /* concept A, dark (hex from docs/assets/diagrams/generate.py) */
+    --bg: #0d1314;
+    --surface: #131a1b;
+    --surface-raised: #192123;
+    --surface-hover: #21292c;
+    --line: #21292c;
+    --line-active: #2b3537;
+    --line-strong: #6a777a;
+    --fg: #f8fbfb;
+    --fg-muted: #9ba7aa;
+    --n-300: #c3cccf;
+    --brand: #37d6dd;
+    --brand-text: #55dae1;
+    --brand-subtle: #03343c;
+    --brand-border: #13808a;
+    --brand-fg: #070c0e;
+    --brand-light: #007781; /* light theme --brand, used by the app icon */
+
+    --radius: 4px;
+    --radius-lg: 6px;
+    --radius-xl: 8px;
+
+    --font-display: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    --font-body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { width: 1280px; height: 640px; overflow: hidden; background: var(--bg); }
+
+  body {
+    position: relative;
+    color: var(--fg);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Faint 32px grid that fades out toward the edges */
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(248, 251, 251, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(248, 251, 251, 0.035) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 75% at 50% 40%, #000 30%, transparent 80%);
+            mask-image: radial-gradient(ellipse 70% 75% at 50% 40%, #000 30%, transparent 80%);
+  }
+
+  /* Soft brand glow behind the window */
+  .glow {
+    position: absolute; left: 50%; top: 520px; width: 1100px; height: 520px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center, rgba(55, 214, 221, 0.20), rgba(55, 214, 221, 0) 65%);
+  }
+
+  .hero {
+    position: absolute; left: 0; right: 0; top: 56px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+
+  .brand {
+    display: flex; align-items: center; gap: 20px;
+  }
+
+  .mark {
+    width: 60px; height: 60px; flex: none;
+    border-radius: 12px;
+    background: var(--brand-light);
+    display: grid; place-items: center;
+    box-shadow: 0 0 0 1px rgba(85, 218, 225, 0.35), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  .mark svg { width: 38px; height: 38px; }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 62px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .tagline {
+    margin-top: 22px;
+    max-width: 900px;
+    text-wrap: balance;
+    font-size: 26px;
+    line-height: 36px;
+    font-weight: 400;
+    color: var(--n-300);
+    letter-spacing: -0.005em;
+  }
+
+  /* Workflow strip: spec -> server -> guardrails -> Inspector / Chat */
+  .flow {
+    margin-top: 30px;
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .step {
+    display: flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 14px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
+    border: 1px solid var(--line-active);
+    color: var(--n-300);
+  }
+  .step .n {
+    color: var(--brand-text);
+    font-weight: 700;
+  }
+  .step.last {
+    background: var(--brand-subtle);
+    border-color: var(--brand-border);
+    color: var(--fg);
+  }
+  .arrow { width: 22px; height: 12px; flex: none; }
+  .arrow path { fill: none; stroke: var(--brand); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Browser window with a cropped Inspector screenshot, bleeding off the bottom */
+  .window {
+    position: absolute; left: 50%; top: 344px;
+    width: 1040px; height: 340px;
+    transform: translateX(-50%);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    background: var(--surface);
+    border: 1px solid var(--line-active);
+    border-bottom: 0;
+    overflow: hidden;
+    box-shadow: 0 -2px 0 rgba(85, 218, 225, 0.06), 0 24px 64px rgba(0, 0, 0, 0.55);
+  }
+  .chrome {
+    height: 34px;
+    display: flex; align-items: center; gap: 8px; padding: 0 14px;
+    background: var(--surface-raised);
+    border-bottom: 1px solid var(--line-active);
+  }
+  .chrome i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-strong); opacity: 0.55; }
+  .chrome .url {
+    margin-left: 18px;
+    height: 20px; padding: 0 12px;
+    display: flex; align-items: center;
+    border-radius: var(--radius);
+    background: var(--bg);
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    color: var(--fg-muted);
+  }
+  .shot {
+    display: block;
+    width: 1500px;           /* 2880px source at about 1.9x downscale; the window shows its left 2000px */
+    height: auto;
+  }
+  /* Fade the bottom of the screenshot into the canvas */
+  .fade {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 110px;
+    background: linear-gradient(to bottom, rgba(13, 19, 20, 0), var(--bg));
+  }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="glow"></div>
+
+  <div class="hero">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <!-- same plug glyph as frontend/src/app/icon.svg -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fcfefe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
+      </div>
+      <h1>MCP Connectors</h1>
+    </div>
+
+    <p class="tagline">Build, test, and run MCP servers for your internal systems, the same way every time.</p>
+
+    <div class="flow">
+      <span class="step"><span class="n">1</span>Spec</span>
+      <svg class="arrow" viewBox="0 0 22 12"><path d="M1 6 H20 M15 1.5 L20 6 L15 10.5"/></svg>
+      <span class="step"><span class="n">2</span>Server</span>
+      <svg class="arrow" viewBox="0 0 22 12"><path d="M1 6 H20 M15 1.5 L20 6 L15 10.5"/></svg>
+      <span class="step"><span class="n">3</span>Guardrails</span>
+      <svg class="arrow" viewBox="0 0 22 12"><path d="M1 6 H20 M15 1.5 L20 6 L15 10.5"/></svg>
+      <span class="step last"><span class="n">4</span>Inspector / Chat</span>
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="chrome">
+      <i></i><i></i><i></i>
+      <span class="url">localhost:3000/inspector</span>
+    </div>
+    <img class="shot" src="../screenshots/inspector-call-dark.png" alt="">
+    <div class="fade"></div>
+  </div>
+</body>
+</html>
