@@ -6,6 +6,7 @@
 
 Spec-driven Claude Code skills write the server, shared guardrails keep it safe, and one local UI lets you call its tools by hand and watch a real LLM use them.
 
+[![CI](https://github.com/sguys99/mcp-connectors/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sguys99/mcp-connectors/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB.svg?logo=python&logoColor=white)](pyproject.toml)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000.svg?logo=nextdotjs&logoColor=white)](frontend/package.json)

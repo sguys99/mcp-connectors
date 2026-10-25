@@ -138,7 +138,19 @@ Every entry in `configs/mcp_servers.yaml` has an English `description` and a Kor
 
 ## Checks to run before a pull request
 
-Run everything that applies to your change. CI is planned (see `docs/update-plan.md`, Phase 7), so for now these checks are run locally.
+Run everything that applies to your change. CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the same checks on every push to `main` and on every pull request, in parallel jobs:
+
+| CI job | What it runs |
+|---|---|
+| Python lint | `make lint-py` |
+| Python tests and scenarios | `make test`, `make test-scenarios-starter`, `make test-scenarios` |
+| Integration | `make sample-db-up`, then the `-m integration` tests and the NL2SQL scenarios on the real backend (`make test-integration`, `make test-scenarios-real`) |
+| Frontend | `npm run lint`, `npx tsc --noEmit`, `npm run test`, `npm run build` |
+| E2E | Playwright (`npm run test:e2e`); the HTML report is uploaded as an artifact when it fails |
+| Secret scan | gitleaks 8.30.1 (same version as the pre-commit hook) over the full git history and the working tree, with `.gitleaks.toml` |
+| Docker | `docker compose build`, `docker compose up -d --wait`, then health checks on the Frontend (:3000), each MCP server (:8001, :8002, :8004), and the Frontend proxy |
+
+Running the checks below locally first saves a round trip.
 
 ### Python
 
@@ -175,7 +187,7 @@ Playwright runs the Chat tests against a fake LLM (`CHAT_MOCK_LLM=1`), so no rea
 uv run pre-commit run --all-files
 ```
 
-The pre-commit hooks include gitleaks (configured by `.gitleaks.toml`), ruff, ruff-format, and basic file checks. The hooks run on every commit after `make init-dev`. The gitleaks hook only scans staged changes; to scan the whole working tree, run `gitleaks dir .` with a local gitleaks binary.
+The pre-commit hooks include gitleaks (configured by `.gitleaks.toml`), ruff, ruff-format, and basic file checks. The hooks run on every commit after `make init-dev`. The gitleaks hook only scans staged changes; to scan the whole working tree, run `gitleaks dir .` with a local gitleaks binary. CI also runs `gitleaks git .` over the full history.
 
 ## Commit messages
 

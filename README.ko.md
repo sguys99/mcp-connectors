@@ -6,6 +6,7 @@
 
 스펙 기반 Claude Code 스킬이 서버를 작성하고, 공통 가드레일이 안전을 지키며, 로컬 UI 하나로 도구를 직접 호출하고 실제 LLM이 그 도구를 쓰는 모습까지 확인합니다.
 
+[![CI](https://github.com/sguys99/mcp-connectors/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sguys99/mcp-connectors/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB.svg?logo=python&logoColor=white)](pyproject.toml)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000.svg?logo=nextdotjs&logoColor=white)](frontend/package.json)
