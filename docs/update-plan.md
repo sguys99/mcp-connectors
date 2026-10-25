@@ -516,7 +516,7 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 |---|---|---|---|
 | P7-1 | 사전 점검과 결정 반영 | 작업 트리 비식별화 grep과 `gitleaks dir`, LICENSE 저작권자, SECURITY.md 기한, 9장 결정 기록, 작성자 이메일 | ✅ |
 | P7-2 | 히스토리 정리 | bundle 백업, orphan 커밋, force push, 원격 브랜치 삭제, 정리 후 `gitleaks git` 0건 (오케스트레이터 직접) | ✅ |
-| P7-3 | 캐시 삭제 요청 | GitHub Support sensitive data removal 요청문 초안 (P7-4와 병렬) | ⬜ |
+| P7-3 | 캐시 삭제 요청 | GitHub Support sensitive data removal 요청문 초안 (P7-4와 병렬) | ✅ |
 | P7-4 | CI와 Docker 검증 | GitHub Actions(ruff, pytest, frontend lint/test/build, Playwright, gitleaks), compose up 후 헬스 체크 | ⬜ |
 | P7-5 | 이월 코드 항목 | `[CODE]` 접미, mock_repo HTTP 클라이언트 재사용, ajv 정적 import, Inspector와 Chat 모바일 성능, Chat CLS | ⬜ |
 | P7-6 | 스크린 리더 점검 | 접근성 트리 자동 근사 점검과 점검표 갱신 (실기 점검은 사용자) | ⬜ |
@@ -527,6 +527,7 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 - [x] **히스토리 정리 (최우선)**: 정리 전 히스토리를 로컬 백업 브랜치와 저장소 밖 git bundle로 보존한 뒤, 현재 상태를 orphan 커밋 하나로 압축해(작성자는 GitHub noreply 주소) `main`에 force push합니다. 원격 `revamp/phase-*` 브랜치 6개는 지웁니다. 방식은 아래 9장의 결정을 따릅니다
   - 완료(2026-10-25, P7-2): P7-1 변경을 커밋한 뒤(커밋 148개) 저장소 밖에 `mcp-connectors-history-backup-20261025.bundle`(10MB, 모든 ref 17개)을 만들고, 별도 clone으로 복원해 커밋 148개를 확인했습니다. 로컬 브랜치 `backup/pre-squash-20261025`도 남겼어요. orphan 커밋 `f526e9e`(작성자와 커미터 모두 noreply 주소)는 백업의 마지막 트리와 차이가 없고, push 전 `gitleaks git` 결과는 0건입니다. force push는 사용자가 직접 실행했고(`77ef2c1...f526e9e`), 원격 `revamp/phase-*` 6개는 오케스트레이터가 지웠습니다. 확인 결과 원격은 커밋 1개, 브랜치 `main` 하나, 태그와 PR은 없습니다. 로컬 `revamp/phase-*` 브랜치는 지우지 않고 그대로 두었으므로 `git push --all`은 쓰지 않습니다
 - [ ] GitHub Support에 캐시된 커밋과 PR 화면 삭제 요청 (sensitive data removal)
+  - 진행(2026-10-25, P7-3): 제출용 요청문 초안을 `docs/revamp/github-support-request.md`에 만들었습니다. 무엇이 민감했는지 적힌 문서라 `.gitignore`에 등록해 로컬에만 둡니다. GitHub 문서(Removing sensitive data from a repository의 "Fully removing the data from GitHub")가 요구하는 항목에 맞춰 저장소 이름, PR 0건, fork 0건, LFS 없음, 첫 변경 커밋(orphan 압축이라 옛 루트 커밋부터 전부), 자격 증명 무효화(DB 서버 종료)를 적었고, 민감 내용은 범주로만 설명합니다. 민감 내용을 넣은 커밋 10개를 강조하고 옛 커밋 148개 SHA 전체를 부록으로 붙였어요. 자격 증명 교체만으로 해결되는 경우는 Support가 거절하므로 회사명, 사내 시스템명, 동료 실명, 내부 문서를 근거로 삼았고, 거절되면 개인정보 삭제 창구(github.com/contact/privacy)를 쓰도록 안내했습니다. 제출은 사용자가 https://support.github.com 에서 합니다(제출 대기)
 - [ ] GitHub Actions CI: ruff, pytest, frontend lint/test/build, Playwright E2E, gitleaks
 - [ ] Docker 이미지 빌드 검증 (CI에서 compose up 후 헬스 체크)
 - [x] 최종 비식별화 grep과 gitleaks 재검사 (작업 트리와 정리 후 히스토리 모두, `gitleaks git .` 0건)

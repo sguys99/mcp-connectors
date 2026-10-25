@@ -230,6 +230,8 @@ docs/nl2sql-mcp-test-data/results/
 
 # 비식별 치환 목록 (로컬 전용, Phase 1 비식별화 작업 기록)
 docs/revamp/redaction-map.md
+# GitHub Support 캐시 삭제 요청문 초안 (민감 정보의 위치와 분류를 담고 있어 로컬 전용)
+docs/revamp/github-support-request.md
 
 # Claude Code 개인 설정과 로컬 메모리 (공유 설정은 .claude/settings.json)
 .claude/settings.local.json
