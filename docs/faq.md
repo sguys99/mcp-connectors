@@ -63,7 +63,7 @@ Nothing is stored on the Frontend server. Chat can export one conversation as Ma
 | Browser data | **Settings**, **Local data**, reset all local data (keeps theme and language) |
 | NL2SQL audit log | Delete `var/nl2sql_mcp/audit.db` (host runs). In Docker it lives on the `nl2sql-var` volume: `docker compose down -v` removes it together with the other volumes |
 | Sample database | `make sample-db-reset` drops the volume and seeds Pagila again |
-| Everything in Docker | `docker compose down -v` removes containers and volumes. Add `--rmi local` to remove the built images too |
+| Everything in Docker | `docker compose --profile sample-db down -v` removes containers and volumes, including the sample DB (without `--profile sample-db` its container and data volume stay). Add `--rmi local` to remove the built images too |
 
 ## Does it work on Windows?
 

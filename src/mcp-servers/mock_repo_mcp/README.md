@@ -114,7 +114,7 @@ uv run python scripts/mcp_cli.py call --server mock-repo-mcp --tool get_file_con
 ## Testing
 
 ```bash
-make test-mock-repo-mcp   # pytest tests/mock_repo_mcp/ (23 tests, no server or network needed)
+make test-mock-repo-mcp   # pytest tests/mock_repo_mcp/ (29 tests, no server or network needed)
 make test-http            # Streamable HTTP transport tests, including API key checks on this server
 make test-e2e             # Frontend Playwright E2E, starts mock-repo-mcp itself
 ```

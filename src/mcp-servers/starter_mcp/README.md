@@ -102,7 +102,7 @@ To call the HTTP variant, start `make run-starter-mcp-http` (or Docker) and use 
 ## Testing
 
 ```bash
-make test-starter-mcp         # pytest tests/starter_mcp/ (31 tests, in-memory client)
+make test-starter-mcp         # pytest tests/starter_mcp/ (32 tests, in-memory client)
 make test-scenarios-starter   # tests/scenarios/starter.yaml over stdio (15 cases, pass threshold 100%)
 make test-http                # Streamable HTTP transport tests, API key on and off
 ```

@@ -79,7 +79,7 @@ make nl2sql-sample-db    # PostgreSQL 17 + Pagila, nl2sql-mcp switches to the re
 make nl2sql-mock         # back to the Mock backend
 ```
 
-전부 멈출 때는 `docker compose down`을 실행합니다. CLI와 Docker 없이 실행하는 방법까지 담은 전체 안내는 [docs/getting-started.md](docs/getting-started.md)에 있어요.
+전부 멈출 때는 `docker compose --profile sample-db down`을 실행합니다(그냥 `docker compose down`은 샘플 DB를 남겨 둡니다). CLI와 Docker 없이 실행하는 방법까지 담은 전체 안내는 [docs/getting-started.md](docs/getting-started.md)에 있어요.
 
 ## 화면 둘러보기
 

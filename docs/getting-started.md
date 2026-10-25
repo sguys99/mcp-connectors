@@ -187,6 +187,10 @@ The stack uses 3000, 8001, 8002, 8004, and 5432 (sample DB, `NL2SQL_PG_PORT`). F
 
 On macOS, Docker can publish a port even when a host process already listens on it over IPv4. `docker compose up` then succeeds, but `localhost:8002` reaches the host process instead of the container. The Inspector is not affected (the proxy uses the internal Docker address), so if the CLI or curl answers differently from the Inspector, check `lsof -iTCP:8002 -sTCP:LISTEN`.
 
+### A second checkout reuses old containers ("network ... not found")
+
+Docker Compose names the project after the folder, so every checkout in a folder called `mcp-connectors` shares the same containers, volumes, and image names. A container left by another checkout, such as an exited `mcp-connectors-postgres`, can then fail to start with `failed to set up container networking: network ... not found`, and a plain `up` may run images built from older code. Remove the stale container (`docker compose --profile sample-db rm -f postgres`) and rebuild with `docker compose up -d --build --wait`, or give the checkout its own project name with `docker compose -p <name> ...`. Note that `docker compose down -v` in one checkout also removes the volumes the other one uses (the sample DB data is rebuilt on the next start).
+
 ### A server shows as offline
 
 The Dashboard checks each HTTP server through the proxy and shows an offline badge with a recovery command, such as `docker compose up -d starter-mcp` or `make run-starter-mcp-http`. Check:
