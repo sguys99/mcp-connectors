@@ -22,7 +22,7 @@
 
 ## 기술 스택
 
-- **MCP 서버**: Python 3.12, FastMCP 3.3 (uv.lock 기준 3.3.1), MCP Python SDK 1.27, pydantic-settings, tenacity, httpx, sqlglot, psycopg 3 (Oracle 은 `uv sync --extra oracle`)
+- **MCP 서버**: Python 3.12, FastMCP 3.4 (uv.lock 기준 3.4.11, 4.x 는 major 라 `<4` 로 고정), MCP Python SDK 1.30 (uv.lock 기준 1.30.0, `<2` 로 고정), pydantic-settings, tenacity, httpx, sqlglot, psycopg 3 (Oracle 은 `uv sync --extra oracle`)
 - **CLI**: typer, PyYAML, `fastmcp.Client` (`fastmcp.client.transports`)
 - **Frontend**: Next.js 16.4 (App Router), React 19.2, TypeScript, Tailwind CSS v4, shadcn/ui (Base UI), next-themes, zod, sonner, `@modelcontextprotocol/sdk` ^1.29. Next.js 16 은 학습 데이터와 API 가 다를 수 있으니 [frontend/AGENTS.md](frontend/AGENTS.md) 안내대로 `node_modules/next/dist/docs/` 를 먼저 확인합니다.
 - **LLM** (기본값은 `frontend/src/lib/storage/settings.ts`): Anthropic `claude-sonnet-4-6`, OpenAI `gpt-4o`, OpenRouter `anthropic/claude-sonnet-4.6` (자유 입력)
