@@ -194,3 +194,93 @@ describe("MCPClient.close", () => {
     await expect(idle.close()).resolves.toBeUndefined();
   });
 });
+
+// MCP Python SDK 1.30 은 30 분 유휴 세션을 닫고, 옛 Mcp-Session-Id 요청에 404 를 돌려준다 (MCP 명세: 새 세션을 시작해야 한다).
+describe("MCPClient idle session expiry", () => {
+  const sessionIds: string[] = [];
+
+  // 유효한 세션 id 를 정해 두고, 그 밖의 id 로 오는 initialize 이외 요청은 404 로 막는 서버.
+  function stubSessionServer(state: { live: string; counter: number; broken?: boolean }) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === "GET") return new Response(null, { status: 405 });
+        if (init?.method === "DELETE") return new Response(null, { status: 200 });
+        const rpc = JSON.parse(String(init?.body)) as Rpc;
+        calls.push(rpc);
+        const sent = new Headers(init?.headers).get("mcp-session-id") ?? "";
+        sessionIds.push(`${rpc.method}:${sent}`);
+        if (rpc.method === "initialize") {
+          state.counter += 1;
+          state.live = state.broken ? "never-matches" : `s${state.counter}`;
+          return json(
+            { jsonrpc: "2.0", id: rpc.id, result: { protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "fake", version: "1" } } },
+            { "mcp-session-id": `s${state.counter}` },
+          );
+        }
+        if (sent !== state.live) {
+          return new Response(JSON.stringify({ jsonrpc: "2.0", id: "server-error", error: { code: -32600, message: "Session not found" } }), {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (rpc.method === "tools/call") return okResult(rpc);
+        if (rpc.method === "tools/list") return json({ jsonrpc: "2.0", id: rpc.id, result: { tools: [{ name: "echo", inputSchema: { type: "object" } }] } });
+        return new Response(null, { status: 202 });
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    sessionIds.length = 0;
+  });
+
+  it("re-initializes once and retries tools/call after a 404 for the old session", async () => {
+    const state = { live: "", counter: 0 };
+    stubSessionServer(state);
+    const messages: string[] = [];
+    const client = createMCPClient(SERVER, {
+      onMessage: (e) => {
+        const m = e.message as { method?: string };
+        if (e.dir === "out" && m.method) messages.push(m.method);
+      },
+    });
+    expect((await client.callTool("echo", {})).isError).toBe(false);
+    state.live = "expired"; // 서버가 세션을 닫은 상태를 흉내 낸다
+    const result = await client.callTool("echo", {});
+    expect(result.isError).toBe(false);
+    expect(result.detail?.outcome).toBe("ok");
+    expect(state.counter).toBe(2);
+    // 두 번째 initialize 가 Inspector 로그(onMessage)에도 보인다
+    expect(messages.filter((m) => m === "initialize")).toHaveLength(2);
+    // 재시도는 새 세션 id 로 간다
+    expect(sessionIds.filter((s) => s.startsWith("tools/call:")).slice(-1)[0]).toBe("tools/call:s2");
+    await client.close();
+  });
+
+  it("recovers listTools and ping the same way", async () => {
+    const state = { live: "", counter: 0 };
+    stubSessionServer(state);
+    const client = createMCPClient(SERVER);
+    expect(await client.listTools()).toHaveLength(1);
+    state.live = "expired";
+    expect(await client.listTools()).toHaveLength(1);
+    state.live = "expired-again";
+    const ping = await client.ping();
+    expect(ping).toMatchObject({ ok: true, toolCount: 1 });
+    expect(state.counter).toBe(3);
+    await client.close();
+  });
+
+  it("does not loop when the retry also gets a 404", async () => {
+    const state = { live: "", counter: 0, broken: false };
+    stubSessionServer(state);
+    const client = createMCPClient(SERVER);
+    await client.listTools();
+    state.broken = true; // 새 initialize 로도 맞는 세션을 받지 못하는 서버
+    state.live = "expired";
+    await expect(client.listTools()).rejects.toMatchObject({ code: 404 });
+    expect(state.counter).toBe(2);
+    await client.close();
+  });
+});

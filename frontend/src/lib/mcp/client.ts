@@ -6,7 +6,7 @@
 //   * 직접 연결: url 이 절대 URL 이면 그대로 접속하고 serverConfig.headers 를 보낸다.
 //     서버 측 Chat 호출 (registry.resolveUpstream 결과) 과 Phase 5 런타임 외부 서버가 이 경로를 쓴다.
 //
-// PRD §3.7.2: 타임아웃 30s, 클라이언트 재시도 없음.
+// PRD §3.7.2: 타임아웃 30s, 클라이언트 재시도 없음. 단 서버가 세션을 닫아 404 가 오면 새 세션으로 한 번 다시 보낸다.
 //
 // 사용 예:
 //   const client = createMCPClient(server); // server: StreamableHttpServer
@@ -14,7 +14,7 @@
 //   const result = await client.callTool("list_repositories", {});
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StreamableHTTPClientTransport, StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { JsonSchemaValidator, jsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/types.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
@@ -309,6 +309,30 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
     return connection;
   }
 
+  // MCP Streamable HTTP 명세: 서버가 세션을 끝낸 뒤(예: Python SDK 1.30 은 30 분 유휴 세션을 닫는다) 옛 Mcp-Session-Id 로
+  // 요청하면 404 가 온다. 이때 클라이언트는 새 세션(initialize)을 시작해야 한다.
+  // 요청이 서버에서 처리되지 않았으므로 한 번 다시 보내도 중복 실행되지 않는다.
+  // 연결을 새로 만들면 transport 가 다시 만들어져 initialize 가 onMessage 로 보이므로 Inspector 로그에 그대로 남는다.
+  async function withReconnect<T>(
+    op: (client: Client) => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    const attempt = getClient();
+    const client = await attempt;
+    try {
+      return await op(client);
+    } catch (err) {
+      if (signal?.aborted || !(err instanceof StreamableHTTPError) || err.code !== 404) throw err;
+      // 동시에 실패한 다른 호출이 이미 새 연결을 만들었으면 그것을 쓴다.
+      if (connection === attempt) {
+        connection = null;
+        activeTransport = null;
+        void client.close().catch(() => {});
+      }
+      return op(await getClient());
+    }
+  }
+
   function toMessage(err: unknown): string {
     if (err instanceof Error) return err.message;
     return String(err);
@@ -326,8 +350,7 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
     currentCall = call;
     const started = performance.now();
     try {
-      const client = await getClient();
-      const result = await exec(client, signal);
+      const result = await withReconnect((client) => exec(client, signal), signal);
       const elapsed = performance.now() - started;
       const payload = result as P;
       const isError = readsIsError && Boolean((payload as { isError?: boolean }).isError);
@@ -383,10 +406,7 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
 
   return {
     async listTools() {
-      const client = await getClient();
-      const result = await client.listTools(undefined, {
-        timeout: REQUEST_TIMEOUT_MS,
-      });
+      const result = await withReconnect((client) => client.listTools(undefined, { timeout: REQUEST_TIMEOUT_MS }));
       // 브라우저는 SDK 의 출력 검증을 쓰지 않으므로 outputSchema 를 따로 기억해 callTool 이 늦게 검증한다.
       outputSchemas.clear();
       for (const t of result.tools) {
@@ -461,9 +481,8 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
     },
 
     async listResources() {
-      const client = await getClient();
       return collectPages(
-        (cursor) => client.listResources(cursor ? { cursor } : undefined, { timeout: REQUEST_TIMEOUT_MS }),
+        (cursor) => withReconnect((client) => client.listResources(cursor ? { cursor } : undefined, { timeout: REQUEST_TIMEOUT_MS })),
         (page) => page.resources,
       ).then((items) =>
         items.map((r) => ({
@@ -478,9 +497,8 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
     },
 
     async listResourceTemplates() {
-      const client = await getClient();
       return collectPages(
-        (cursor) => client.listResourceTemplates(cursor ? { cursor } : undefined, { timeout: REQUEST_TIMEOUT_MS }),
+        (cursor) => withReconnect((client) => client.listResourceTemplates(cursor ? { cursor } : undefined, { timeout: REQUEST_TIMEOUT_MS })),
         (page) => page.resourceTemplates,
       ).then((items) =>
         items.map((r) => ({
@@ -494,9 +512,8 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
     },
 
     async listPrompts() {
-      const client = await getClient();
       return collectPages(
-        (cursor) => client.listPrompts(cursor ? { cursor } : undefined, { timeout: REQUEST_TIMEOUT_MS }),
+        (cursor) => withReconnect((client) => client.listPrompts(cursor ? { cursor } : undefined, { timeout: REQUEST_TIMEOUT_MS })),
         (page) => page.prompts,
       ).then((items) =>
         items.map((p) => ({
@@ -517,9 +534,9 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
       // p50 과 스파크라인이 연결 비용을 지연으로 보이게 된다. 연결이 실패하면 거기까지 걸린 시간을 돌려준다.
       let started = performance.now();
       try {
-        const client = await getClient();
+        await getClient();
         started = performance.now();
-        const list = await client.listTools(undefined, { timeout: REQUEST_TIMEOUT_MS });
+        const list = await withReconnect((client) => client.listTools(undefined, { timeout: REQUEST_TIMEOUT_MS }));
         return {
           ok: true,
           latencyMs: Math.round(performance.now() - started),
