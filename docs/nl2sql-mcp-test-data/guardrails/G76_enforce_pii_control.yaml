@@ -1,0 +1,414 @@
+meta:
+  target: guardrail_76
+  guardrail_name: enforce_pii_control
+  error_code: PII_COLUMN_BLOCKED
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+
+tests:
+  - id: G76-001
+    category: block
+    call_type: direct
+    title: "EMAIL 컬럼 직접 조회 차단 (INPUT phase)"
+    description: "SELECT email FROM customer: email 은 PII 컬럼으로 INPUT phase에서 PII_COLUMN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT email FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT email FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-002
+    category: block
+    call_type: direct
+    title: "PHONE 컬럼(address) 직접 조회 차단 (INPUT phase)"
+    description: "SELECT phone FROM address: phone 은 PII 컬럼으로 INPUT phase에서 PII_COLUMN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT phone FROM address WHERE city_id = 300 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT phone FROM address WHERE city_id = 300 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-003
+    category: block
+    call_type: direct
+    title: "LAST_NAME 컬럼 직접 조회 차단 (INPUT phase)"
+    description: "SELECT last_name FROM customer: last_name 은 PII 컬럼으로 INPUT phase에서 PII_COLUMN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT last_name FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT last_name FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-004
+    category: block
+    call_type: direct
+    title: "PASSWORD 컬럼(staff) 직접 조회 차단 (INPUT phase)"
+    description: "SELECT password FROM staff: password 는 PII 컬럼으로 INPUT phase에서 PII_COLUMN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT password FROM staff WHERE store_id = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT password FROM staff WHERE store_id = 1 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-005
+    category: block
+    call_type: direct
+    title: "다중 PII 컬럼 동시 조회 차단 (INPUT phase)"
+    description: "SELECT에 email, first_name 두 PII 컬럼 포함. 하나라도 PII 컬럼이 포함되면 INPUT phase에서 PII_COLUMN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, email, first_name FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, email, first_name FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-006
+    category: block
+    call_type: direct
+    title: "PII 컬럼 집계 함수 조회 차단 (INPUT phase)"
+    description: "COUNT(email): 집계 함수 내 PII 컬럼 참조도 INPUT phase에서 PII_COLUMN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(email) FROM customer WHERE active = 1"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(email) FROM customer WHERE active = 1\", \"max_rows\": 10}"
+
+  - id: G76-007
+    category: pass
+    call_type: direct
+    title: "PII 컬럼 없는 SELECT — 차단 없이 통과"
+    description: "SELECT customer_id, address_id, active: PII 컬럼(email, phone, first_name, last_name) 없이 일반 컬럼만 조회. PII_COLUMN_BLOCKED 없이 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G76-008
+    category: pass
+    call_type: direct
+    title: "비PII 컬럼 조회 — 차단 없이 통과"
+    description: "store_id, activebool, create_date 는 PII 목록에 없는 컬럼. PII_COLUMN_BLOCKED 없이 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, store_id, activebool, create_date FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, store_id, activebool, create_date FROM customer WHERE active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G76-009
+    category: pass
+    call_type: direct
+    title: "JOIN 쿼리에서 PII 컬럼 미포함 — 차단 없이 통과"
+    description: "customer 와 payment JOIN이지만 SELECT에 PII 컬럼 없음. PII_COLUMN_BLOCKED 없이 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, p.amount FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, p.amount FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G76-010
+    category: pass
+    call_type: direct
+    title: "rental 테이블 비PII 컬럼만 조회, 차단 없이 통과"
+    description: "rental 에서 rental_id, return_date, staff_id 조회(진행 중 대여). PII 컬럼 미포함으로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, return_date, staff_id FROM rental WHERE return_date IS NULL LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, return_date, staff_id FROM rental WHERE return_date IS NULL LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G76-011
+    category: transform
+    call_type: direct
+    title: "PII 없는 결과 — masked_columns 빈 배열 확인"
+    description: "SELECT customer_id, address_id, active: PII 컬럼 미포함. 결과의 masked_columns 필드가 빈 배열([])인지 확인. OUTPUT phase 마스킹 불필요"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+        - {field: "masked_columns", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G76-012
+    category: transform
+    call_type: direct
+    title: "film 조회, masked_columns 빈 배열 확인"
+    description: "SELECT film_id, rating, title FROM film: PII 컬럼 없음. masked_columns 빈 배열 확인. WHERE 없는 전체 조회는 G77 에서 막히므로 language_id 조건을 둡니다"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id, rating, title FROM film WHERE language_id = 1 LIMIT 15"
+        max_rows: 15
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+        - {field: "masked_columns", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT film_id, rating, title FROM film WHERE language_id = 1 LIMIT 15\", \"max_rows\": 15}"
+
+  - id: G76-013
+    category: transform
+    call_type: direct
+    title: "rental 비PII 컬럼 조회, masked_columns 빈 배열 확인"
+    description: "SELECT rental_id, staff_id FROM rental: PII 컬럼 미포함. OUTPUT phase에서 마스킹 없이 masked_columns 빈 배열 반환 확인"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, staff_id FROM rental WHERE return_date IS NULL LIMIT 5"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "masked_columns", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, staff_id FROM rental WHERE return_date IS NULL LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-014
+    category: transform
+    call_type: direct
+    title: "store_id 값이 마스킹되지 않는지 확인"
+    description: "store_id 는 PII 패턴이 아니므로 OUTPUT phase에서 마스킹되지 않아야 함. store_id 값이 원본 그대로 반환되는지 확인"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, store_id FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "masked_columns", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, store_id FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-015
+    category: edge
+    call_type: direct
+    title: "SELECT * FROM customer, PII 포함 여부 처리 방식 확인"
+    description: "SELECT *는 customer 의 block 컬럼(email, first_name, last_name)으로 펼쳐지므로 입력 단계에서 PII_COLUMN_BLOCKED. PII 가 없는 테이블(film 등)의 SELECT * 는 통과하고, mask 컬럼만 있는 테이블(sales_by_store)은 결과에서 해당 열을 가림"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT * FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT * FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-016
+    category: edge
+    call_type: direct
+    title: "존재하지 않는 컬럼에 EMAIL 별칭 사용 — PII 오탐 여부 확인"
+    description: "payment 테이블에는 email 컬럼이 없으나 AS email 별칭 사용. PII 검사가 SELECT 컬럼명이 아닌 별칭 기준으로 동작하면 오탐 가능성 있음. 구현에 따라 success 또는 PII_COLUMN_BLOCKED 반환"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT p.payment_id, p.staff_id AS email FROM payment p WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 5"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT p.payment_id, p.staff_id AS email FROM payment p WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-017
+    category: edge
+    call_type: direct
+    title: "WHERE 절에 EMAIL 사용 — SELECT에 PII 없으면 통과"
+    description: "email 은 WHERE 조건에만 사용되고 SELECT 목록에는 없음. INPUT phase는 SELECT 컬럼 기준으로 PII를 검사하므로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id FROM customer WHERE email = 'test@test.com' AND active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id FROM customer WHERE email = 'test@test.com' AND active = 1 LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G76-018
+    category: edge
+    call_type: direct
+    title: "PII 없는 GROUP BY 집계 — 차단 없이 통과"
+    description: "payment 에서 customer_id 기준 GROUP BY COUNT 집계. SELECT에 PII 컬럼 없으므로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, COUNT(*) FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY customer_id LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, COUNT(*) FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY customer_id LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G76-019
+    category: chat
+    call_type: chat
+    title: "자연어 고객 이메일 목록 요청 — PII 차단 반응 확인"
+    description: "자연어 '고객 이메일 목록 보여줘' 요청 시 AI가 email 컬럼 포함 SQL을 생성하면 PII_COLUMN_BLOCKED가 반환되거나, AI가 PII 제한을 사전 인지하여 경고 메시지를 반환해야 함"
+    input:
+      tool: nl2sql_chat
+      params:
+        message: "고객 이메일 목록 보여줘"
+        session_id: "test-g76-019"
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool nl2sql_chat \
+          --params "{\"message\": \"고객 이메일 목록 보여줘\", \"session_id\": \"test-g76-019\"}"
+
+  - id: G76-020
+    category: chat
+    call_type: chat
+    title: "자연어 고객 ID와 소속 매장 요청, PII 없는 성공 응답 확인"
+    description: "자연어 '고객 ID와 소속 매장 번호만 알려줘' 요청 시 AI가 SELECT customer_id, store_id FROM customer SQL을 생성하면 PII 컬럼 없이 success 반환되어야 함. 고객 이름(first_name, last_name)은 PII 차단 대상이라 질문을 매장 번호로 바꿨습니다"
+    input:
+      tool: nl2sql_chat
+      params:
+        message: "고객 ID와 소속 매장 번호만 알려줘"
+        session_id: "test-g76-020"
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool nl2sql_chat \
+          --params "{\"message\": \"고객 ID와 소속 매장 번호만 알려줘\", \"session_id\": \"test-g76-020\"}"

@@ -1,0 +1,593 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+@custom-variant lang-ko (&:lang(ko));
+
+/*
+ * 디자인 토큰: docs/revamp/design/tokens.css 의 시안 A 값을 :root(라이트)와 .dark(다크)로 접었습니다.
+ * 값의 정본은 tokens.css 이고, 결정 기록은 docs/revamp/design-decision.md 입니다.
+ * 컴포넌트는 역할 토큰(--bg, --surface, --brand ...)만 쓰고 --n-* 단계는 직접 쓰지 않습니다.
+ */
+
+@theme inline {
+  /* 서체: 토큰 이름은 --font-code 로 두어 --font-mono 자기 참조를 피함 (design-decision 4.4-1) */
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-display);
+  --font-mono: var(--font-code);
+
+  /* shadcn 변수 */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-6: var(--chart-6);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* 브랜드 */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-text: var(--brand-text);
+  --color-brand-border: var(--brand-border);
+  --color-selection: var(--selection);
+  --color-sel-row: var(--sel-row);
+  --color-focus-ring: var(--focus-ring);
+
+  /* 면, 선, 텍스트 */
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-inverse: var(--inverse);
+  --color-fg-on-inverse: var(--fg-on-inverse);
+  --color-overlay: var(--overlay);
+
+  /* 의미 색 */
+  --color-success-fg: var(--success-fg);
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-success-solid: var(--success-solid);
+  --color-success-solid-fg: var(--success-solid-fg);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-solid: var(--warning-solid);
+  --color-warning-solid-fg: var(--warning-solid-fg);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-solid-fg: var(--danger-solid-fg);
+  --color-info-fg: var(--info-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-border: var(--info-border);
+  --color-info-solid: var(--info-solid);
+  --color-info-solid-fg: var(--info-solid-fg);
+
+  /* 트레이스 스팬: 워터폴은 --span-* 만 참조 */
+  --color-span-llm: var(--span-llm);
+  --color-span-tool: var(--span-tool);
+  --color-span-guard: var(--span-guard);
+  --color-span-proxy: var(--span-proxy);
+  --color-span-err: var(--span-err);
+  --color-span-wait: var(--span-wait);
+
+  /* 그림자: 토큰은 --elev-* 로 두고 shadow-* 유틸리티가 이를 읽게 연결 (--shadow-md 자기 참조와 Tailwind 기본값 고정 회피) */
+  --shadow-xs: var(--elev-xs);
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-lg);
+  --shadow-xl: var(--elev-xl);
+
+  /* 라운드: --radius(4px) 비율. tokens.css 단계(0.5, 0.75, 1, 1.5, 2배)를 따르고 shadcn 기존 비율을 대체 (4.4-2) */
+  --radius-xs: calc(var(--radius) * 0.5);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 2.5);
+  --radius-3xl: calc(var(--radius) * 3);
+  --radius-4xl: calc(var(--radius) * 4);
+}
+
+/* 타입 스케일: 크기와 행간을 함께 등록 (4.4-3). Tailwind 기본 text-xs ~ text-4xl 을 덮어쓰고 2xs, md 를 더함 */
+@theme {
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 12px;
+  --text-xs--line-height: 18px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 22px;
+  --text-md: 16px;
+  --text-md--line-height: 26px;
+  --text-lg: 18px;
+  --text-lg--line-height: 28px;
+  --text-xl: 20px;
+  --text-xl--line-height: 30px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 38px;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 44px;
+}
+
+:root {
+  color-scheme: light;
+
+  /* Spacing, 4px grid */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Layout sizes */
+  --control-h-sm: 28px;
+  --control-h-md: 32px;
+  --control-h-lg: 40px;
+  --touch-min: 44px;
+  --content-max: 1280px;
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-l: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+
+  --radius-full: 9999px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0;
+  --tracking-caps: 0.06em;
+
+  /* Motion */
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1.15);
+
+  /* z-index */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-sidebar: 200;
+  --z-dropdown: 1000;
+  --z-overlay: 1100;
+  --z-modal: 1200;
+  --z-popover: 1300;
+  --z-toast: 1400;
+  --z-tooltip: 1500;
+
+  /* Focus */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* Neutral steps: fixed L and C, hue from the concept (slight brand tint) */
+  --n-0: oklch(0.995 0.002 var(--neutral-hue));
+  --n-25: oklch(0.985 0.003 var(--neutral-hue));
+  --n-50: oklch(0.972 0.004 var(--neutral-hue));
+  --n-100: oklch(0.952 0.006 var(--neutral-hue));
+  --n-150: oklch(0.928 0.007 var(--neutral-hue));
+  --n-200: oklch(0.900 0.009 var(--neutral-hue));
+  --n-300: oklch(0.840 0.011 var(--neutral-hue));
+  --n-400: oklch(0.720 0.014 var(--neutral-hue));
+  --n-450: oklch(0.640 0.015 var(--neutral-hue));
+  --n-500: oklch(0.560 0.016 var(--neutral-hue));
+  --n-600: oklch(0.470 0.016 var(--neutral-hue));
+  --n-700: oklch(0.380 0.015 var(--neutral-hue));
+  --n-750: oklch(0.320 0.014 var(--neutral-hue));
+  --n-800: oklch(0.275 0.013 var(--neutral-hue));
+  --n-850: oklch(0.240 0.012 var(--neutral-hue));
+  --n-900: oklch(0.210 0.011 var(--neutral-hue));
+  --n-950: oklch(0.180 0.010 var(--neutral-hue));
+  --n-1000: oklch(0.150 0.009 var(--neutral-hue));
+
+  /* Shadows (light) */
+  --shadow-color: oklch(0.25 0.02 var(--neutral-hue));
+  --elev-xs: 0 1px 2px oklch(0.25 0.02 var(--neutral-hue) / 0.06);
+  --elev-sm: 0 1px 3px oklch(0.25 0.02 var(--neutral-hue) / 0.08), 0 1px 2px oklch(0.25 0.02 var(--neutral-hue) / 0.04);
+  --elev-md: 0 4px 12px -2px oklch(0.25 0.02 var(--neutral-hue) / 0.10), 0 2px 4px -2px oklch(0.25 0.02 var(--neutral-hue) / 0.06);
+  --elev-lg: 0 12px 32px -8px oklch(0.25 0.02 var(--neutral-hue) / 0.16), 0 4px 8px -4px oklch(0.25 0.02 var(--neutral-hue) / 0.06);
+  --elev-xl: 0 24px 64px -12px oklch(0.25 0.02 var(--neutral-hue) / 0.24), 0 8px 16px -8px oklch(0.25 0.02 var(--neutral-hue) / 0.08);
+
+  /* Surfaces and text (light) */
+  --bg: var(--n-25);
+  --bg-subtle: var(--n-50);
+  --surface: var(--n-0);
+  --surface-raised: var(--n-0);
+  --surface-sunken: var(--n-50);
+  --surface-hover: var(--n-100);
+  --surface-active: var(--n-150);
+  --line: var(--n-150);
+  --line-strong: var(--n-450);
+  --fg: var(--n-1000);
+  --fg-muted: var(--n-600);
+  --fg-subtle: var(--n-450);
+  --fg-on-inverse: var(--n-0);
+  --inverse: var(--n-900);
+  --overlay: oklch(0.2 0.01 var(--neutral-hue) / 0.45);
+
+  /* Semantic: success (green 150), warning (orange 62), danger (red 25), info (blue 245) */
+  --success-hue: 150;
+  --warning-hue: 62;
+  --danger-hue: 25;
+  --info-hue: 245;
+
+  --success-fg: oklch(0.46 0.12 var(--success-hue));
+  --success-bg: oklch(0.962 0.030 var(--success-hue));
+  --success-border: oklch(0.62 0.13 var(--success-hue));
+  --success-solid: oklch(0.54 0.14 var(--success-hue));
+  --success-solid-fg: var(--n-0);
+
+  --warning-fg: oklch(0.49 0.12 calc(var(--warning-hue) - 8));
+  --warning-bg: oklch(0.967 0.040 calc(var(--warning-hue) + 18));
+  --warning-border: oklch(0.64 0.14 var(--warning-hue));
+  --warning-solid: oklch(0.66 0.15 var(--warning-hue));
+  --warning-solid-fg: var(--n-1000);
+
+  --danger-fg: oklch(0.50 0.17 var(--danger-hue));
+  --danger-bg: oklch(0.962 0.025 var(--danger-hue));
+  --danger-border: oklch(0.62 0.18 var(--danger-hue));
+  --danger-solid: oklch(0.55 0.19 var(--danger-hue));
+  --danger-solid-fg: var(--n-0);
+
+  --info-fg: oklch(0.48 0.13 var(--info-hue));
+  --info-bg: oklch(0.962 0.025 var(--info-hue));
+  --info-border: oklch(0.62 0.13 var(--info-hue));
+  --info-solid: oklch(0.53 0.14 var(--info-hue));
+  --info-solid-fg: var(--n-0);
+
+  /* JSON syntax (light, checked on --surface-sunken and --surface) */
+  --syntax-key: oklch(0.48 0.13 255);
+  --syntax-string: oklch(0.49 0.12 150);
+  --syntax-number: oklch(0.52 0.15 45);
+  --syntax-boolean: oklch(0.49 0.17 330);
+  --syntax-null: oklch(0.52 0.012 var(--neutral-hue));
+  --syntax-punct: var(--fg-muted);
+
+  /* Log levels (JSON-RPC log, server log) */
+  --log-debug: var(--fg-muted);
+  --log-info: var(--info-fg);
+  --log-warn: var(--warning-fg);
+  --log-error: var(--danger-fg);
+  --log-request: var(--brand-text);
+  --log-response: var(--success-fg);
+
+  /* Charts (chart-1 is the brand, set per concept) */
+  --chart-1: var(--brand);
+  --chart-2: oklch(0.58 0.12 165);
+  --chart-3: oklch(0.62 0.16 45);
+  --chart-4: oklch(0.56 0.18 340);
+  --chart-5: oklch(0.58 0.13 240);
+  --chart-6: oklch(0.55 0.15 295);
+
+  /* Trace spans (waterfall in Chat and Inspector timing). One hue per span
+     kind, about 45 degrees apart: LLM = brand, proxy/DB = blue 240,
+     guardrail = violet 295, tool = magenta 340, error = danger red,
+     approval wait = warning edge color drawn as a hatch. Declared once here
+     and only through theme-switching tokens, so the dark blocks need no
+     copy and a page can still override a span kind in its own :root. */
+  --span-llm: var(--chart-1);
+  --span-tool: var(--chart-4);
+  --span-guard: var(--chart-6);
+  --span-proxy: var(--chart-5);
+  --span-err: var(--danger-solid);
+  --span-wait: var(--warning-border);
+
+  /* 시안 A: 색조와 라운드 */
+  --neutral-hue: 215;
+  --brand-hue: 200;
+  --radius: 4px;
+
+  /* 서체: next/font 변수는 layout.tsx 에서 <html> 에 붙습니다 */
+  --font-kr-fallback: var(--font-plex-sans-kr), "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-display: var(--font-jetbrains-mono), var(--font-plex-sans-kr), ui-monospace, monospace;
+  --font-body: var(--font-plex-sans), var(--font-kr-fallback);
+  --font-code: var(--font-jetbrains-mono), var(--font-plex-sans-kr), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* 브랜드 (라이트) */
+  --brand: oklch(0.52 0.095 205);
+  --brand-hover: oklch(0.47 0.090 205);
+  --brand-fg: var(--n-0);
+  --brand-subtle: oklch(0.955 0.025 205);
+  --brand-text: oklch(0.48 0.090 205);
+  --brand-border: oklch(0.70 0.090 205);
+  --focus-ring: oklch(0.56 0.110 205);
+  --selection: oklch(0.90 0.050 205);
+
+  /* 앱 셸 레이아웃 변수 (design-decision 6.1). 폭이 줄면 아래 미디어 쿼리가 덮어씀 */
+  --tb-h: 40px;
+  --sb-h: 24px;
+  --act-w: 44px;
+  --side-w: 248px;
+  --c1: 264px;
+  --rq: 1fr;
+  --rs: 1fr;
+  --dock-h: 216px;
+  --trace-w: 420px;
+  /* 선택된 행 면 (서버 탐색기, 대화 목록). 라이트와 다크 모두 브랜드를 9% 섞는다 */
+  --sel-row: color-mix(in oklch, var(--brand) 9%, var(--surface-hover));
+  /* 토스트의 아래 간격. 모바일에서는 하단 탭바 위로 올린다 */
+  --toast-bottom: calc(var(--sb-h) + 16px + env(safe-area-inset-bottom, 0px));
+
+  /* shadcn 변수 매핑 (4.2). 토큰이 .dark 에서 값을 바꾸므로 한 벌만 둡니다 */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--surface);
+  --card-foreground: var(--fg);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--fg);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-fg);
+  --secondary: var(--surface-hover);
+  --secondary-foreground: var(--fg);
+  --muted: var(--bg-subtle);
+  --muted-foreground: var(--fg-muted);
+  --accent: var(--surface-hover);
+  --accent-foreground: var(--fg);
+  --destructive: var(--danger-solid);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--focus-ring);
+  --sidebar: var(--bg-subtle);
+  --sidebar-foreground: var(--fg);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-fg);
+  --sidebar-accent: var(--surface-hover);
+  --sidebar-accent-foreground: var(--fg);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--focus-ring);
+}
+
+@media (max-width: 1280px) {
+  :root {
+    --side-w: 220px;
+    --c1: 250px;
+    --trace-w: 340px;
+  }
+}
+
+@media (max-width: 1080px) {
+  :root {
+    --side-w: 200px;
+    --rq: 1.06fr;
+    --rs: 0.94fr;
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --tb-h: 48px;
+    --act-w: 0px;
+    --side-w: min(320px, 86vw);
+    --dock-h: 40vh;
+    --toast-bottom: calc(56px + var(--sb-h) + 12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.dark {
+  color-scheme: dark;
+  --shadow-color: oklch(0 0 0);
+  --elev-xs: 0 1px 2px oklch(0 0 0 / 0.30);
+  --elev-sm: 0 1px 3px oklch(0 0 0 / 0.36), 0 1px 2px oklch(0 0 0 / 0.24);
+  --elev-md: 0 4px 12px -2px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.30);
+  --elev-lg: 0 12px 32px -8px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.30);
+  --elev-xl: 0 24px 64px -12px oklch(0 0 0 / 0.65), 0 8px 16px -8px oklch(0 0 0 / 0.35);
+
+  --bg: var(--n-950);
+  --bg-subtle: var(--n-1000);
+  --surface: var(--n-900);
+  --surface-raised: var(--n-850);
+  --surface-sunken: var(--n-1000);
+  --surface-hover: var(--n-800);
+  --surface-active: var(--n-750);
+  --line: var(--n-800);
+  --line-strong: var(--n-500);
+  --fg: var(--n-25);
+  --fg-muted: var(--n-400);
+  --fg-subtle: var(--n-500);
+  --fg-on-inverse: var(--n-1000);
+  --inverse: var(--n-100);
+  --overlay: oklch(0 0 0 / 0.6);
+
+  --success-fg: oklch(0.80 0.13 var(--success-hue));
+  --success-bg: oklch(0.27 0.045 var(--success-hue));
+  --success-border: oklch(0.55 0.11 var(--success-hue));
+  --success-solid: oklch(0.72 0.15 var(--success-hue));
+  --success-solid-fg: var(--n-1000);
+
+  --warning-fg: oklch(0.83 0.12 calc(var(--warning-hue) + 8));
+  --warning-bg: oklch(0.28 0.045 var(--warning-hue));
+  --warning-border: oklch(0.58 0.11 var(--warning-hue));
+  --warning-solid: oklch(0.78 0.14 var(--warning-hue));
+  --warning-solid-fg: var(--n-1000);
+
+  --danger-fg: oklch(0.78 0.13 var(--danger-hue));
+  --danger-bg: oklch(0.27 0.055 var(--danger-hue));
+  --danger-border: oklch(0.58 0.15 var(--danger-hue));
+  --danger-solid: oklch(0.68 0.17 var(--danger-hue));
+  --danger-solid-fg: var(--n-1000);
+
+  --info-fg: oklch(0.80 0.10 var(--info-hue));
+  --info-bg: oklch(0.27 0.045 var(--info-hue));
+  --info-border: oklch(0.56 0.11 var(--info-hue));
+  --info-solid: oklch(0.72 0.12 var(--info-hue));
+  --info-solid-fg: var(--n-1000);
+
+  --syntax-key: oklch(0.80 0.10 240);
+  --syntax-string: oklch(0.80 0.13 148);
+  --syntax-number: oklch(0.80 0.12 60);
+  --syntax-boolean: oklch(0.78 0.13 330);
+  --syntax-null: oklch(0.68 0.012 var(--neutral-hue));
+
+  --chart-2: oklch(0.72 0.12 165);
+  --chart-3: oklch(0.72 0.15 50);
+  --chart-4: oklch(0.70 0.16 340);
+  --chart-5: oklch(0.72 0.12 240);
+  --chart-6: oklch(0.72 0.12 295);
+
+  /* 브랜드 (다크) */
+  --brand: oklch(0.80 0.125 200);
+  --brand-hover: oklch(0.86 0.110 200);
+  --brand-fg: var(--n-1000);
+  --brand-subtle: oklch(0.30 0.050 210);
+  --brand-text: oklch(0.82 0.115 200);
+  --brand-border: oklch(0.55 0.090 205);
+  --focus-ring: oklch(0.78 0.125 200);
+  --selection: oklch(0.38 0.070 205);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* 모션 줄이기: Tailwind 기본 전환(150ms), tw-animate 진입/퇴장, 스피너와 skeleton 펄스까지 한꺼번에 끈다.
+   토큰 값만 0 으로 만들어서는 duration 을 토큰으로 쓰지 않는 유틸리티가 남기 때문이다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 서버 상태 점 (StatusDot). 모션 줄이기 설정에서는 애니메이션을 끈다 */
+@keyframes mcpc-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  70%, 100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes mcpc-blink {
+  to { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mcpc-ping, .mcpc-blink { animation: none !important; }
+}
+
+/* 워터폴(components/trace/Waterfall): 실행 중 막대의 흐르는 빛과, 선택한 행이 잠깐 강조되는 효과 */
+@keyframes mcpc-wf-run {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes mcpc-wf-flash {
+  0%, 30% { background-color: color-mix(in oklch, var(--brand) 20%, var(--surface)); }
+  100% { background-color: var(--sel-row); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mcpc-wf-run, .mcpc-wf-flash { animation: none !important; }
+}
+
+/* 가로 스크롤 상자의 가장자리 그림자. 덮개(local)는 내용과 함께 움직이고 그림자(scroll)는 상자에 붙어 있어,
+   끝까지 스크롤한 쪽은 덮개가 그림자를 가리고 더 볼 내용이 남은 쪽에만 그림자가 보인다. 스크롤바가 숨는 환경용 단서다. */
+.mcpc-scroll-shadow {
+  --mcpc-shadow: color-mix(in oklch, var(--foreground) 16%, transparent);
+  background:
+    linear-gradient(to right, var(--surface) 40%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 40%, transparent) right / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--mcpc-shadow), transparent) left / 12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--mcpc-shadow), transparent) right / 12px 100% no-repeat scroll,
+    var(--surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground text-base;
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+  :lang(ko) {
+    word-break: keep-all;
+  }
+  /* 한국어 문장이 고정폭 서체(JetBrains Mono) 안에 놓이면 띄어쓰기가 Latin 고정폭 공백(0.6em)이라 성겨 보인다.
+     제목, 대문자 라벨, 고정폭 본문 조각의 단어 간격만 줄인다. 코드, 명령어, 입력창은 정확한 간격이 필요해 제외하고,
+     그 밖에 제외할 곳은 mono-exact 클래스를 단다. */
+  :lang(ko) :is(.font-heading, .font-display, .font-mono, .uppercase):not(
+      pre,
+      code,
+      textarea,
+      input,
+      .whitespace-pre,
+      .whitespace-pre-wrap,
+      .mono-exact,
+      :is(pre, code, .mono-exact) *
+    ) {
+    word-spacing: -0.26em;
+  }
+  ::selection {
+    background: var(--selection);
+  }
+  :focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: var(--focus-offset);
+  }
+}

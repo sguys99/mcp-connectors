@@ -1,0 +1,41 @@
+mcp-connectors
+Copyright 2026 mcp-connectors contributors. Licensed under the terms in LICENSE.
+
+This repository does not vendor third-party data. The local NL2SQL sample
+database (docker/postgres/Dockerfile) downloads the following at image build
+time and verifies each file with a pinned sha256 checksum.
+
+-------------------------------------------------------------------------------
+Pagila sample database
+  Source:  https://github.com/devrimgunduz/pagila
+  Commit:  5ba5a57aeb159f75f02aca2432d3c262186d13d3 (2024-12-02)
+  Files:   pagila-schema.sql, pagila-data.sql
+  License: PostgreSQL License (as stated in the upstream README; upstream
+           LICENSE.txt was later updated to the PostgreSQL License text in
+           commit deb2a88). Pagila is a PostgreSQL port of the Sakila
+           sample database.
+
+  PostgreSQL License
+
+  Copyright (c) 2015-2026, Devrim Gündüz <devrim@gunduz.org>
+
+  Permission to use, copy, modify, and distribute this software and its
+  documentation for any purpose, without fee, and without a written agreement
+  is hereby granted, provided that the above copyright notice and this
+  paragraph and the following two paragraphs appear in all copies.
+
+  IN NO EVENT SHALL DEVRIM GÜNDÜZ BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+  SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS,
+  ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF
+  DEVRIM GÜNDÜZ HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+  DEVRIM GÜNDÜZ SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+  PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN "AS IS" BASIS,
+  AND DEVRIM GÜNDÜZ HAS NO OBLIGATIONS TO PROVIDE MAINTENANCE, SUPPORT,
+  UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
+  The table and column comments in docker/postgres/initdb/03-pagila-comments.sql
+  and the Mock fixtures in src/mcp-servers/nl2sql_mcp/db/mock_backend.py are
+  written for this project and describe the Pagila schema.
+-------------------------------------------------------------------------------

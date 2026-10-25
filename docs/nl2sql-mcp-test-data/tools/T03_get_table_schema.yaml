@@ -1,0 +1,395 @@
+meta:
+  target: get_table_schema
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+  cli_server: nl2sql-mcp
+
+# 기준 스키마: Pagila (public). owner 는 "public", 식별자는 소문자로 반환된다.
+# 컬럼 수, PK, FK 기대값은 Mock 카탈로그를 직접 조회해 맞췄다.
+
+tests:
+  - id: T03-001
+    category: positive
+    call_type: direct
+    title: "customer 테이블 스키마 조회 → 10개 컬럼, PK=customer_id"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "customer"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "customer"}
+        - {field: "columns", op: "length_eq", value: 10}
+        - {field: "primary_key", op: "contains_any", value: ["customer_id"]}
+        - {field: "columns[*].name", op: "contains_all", value: ["customer_id", "store_id", "first_name", "email", "active"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "customer"}'
+
+  - id: T03-002
+    category: positive
+    call_type: direct
+    title: "payment 테이블 스키마 → payment_date 컬럼, FK 3개 확인"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "payment"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "payment"}
+        - {field: "columns[*].name", op: "contains_any", value: ["payment_date"]}
+        - {field: "foreign_keys", op: "length_eq", value: 3}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["customer", "staff", "rental"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "payment"}'
+
+  - id: T03-003
+    category: positive
+    call_type: direct
+    title: "rental 테이블 스키마 → return_date 컬럼, FK 3개 확인"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "rental"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "rental"}
+        - {field: "columns[*].name", op: "contains_any", value: ["return_date"]}
+        - {field: "foreign_keys", op: "length_eq", value: 3}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["inventory", "customer", "staff"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "rental"}'
+
+  - id: T03-004
+    category: positive
+    call_type: direct
+    title: "스키마 한정자 포함 public.customer → customer 와 동일 결과 반환"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "public.customer"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "customer"}
+        - {field: "owner", op: "eq", value: "public"}
+        - {field: "columns", op: "length_eq", value: 10}
+        - {field: "primary_key", op: "contains_any", value: ["customer_id"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "public.customer"}'
+
+  - id: T03-005
+    category: positive
+    call_type: direct
+    title: "film 테이블 스키마 → FK 2개가 모두 language 참조, rental_rate 컬럼 확인"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "film"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "film"}
+        - {field: "columns[*].name", op: "contains_all", value: ["rental_rate", "language_id", "original_language_id"]}
+        - {field: "foreign_keys", op: "length_eq", value: 2}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["language"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "film"}'
+
+  - id: T03-006
+    category: positive
+    call_type: direct
+    title: "staff 테이블 스키마 → FK 2개 (address_id→address, store_id→store)"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "staff"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "staff"}
+        - {field: "foreign_keys", op: "length_eq", value: 2}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["address", "store"]}
+        - {field: "columns[*].name", op: "contains_all", value: ["store_id", "username"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "staff"}'
+
+  - id: T03-007
+    category: negative
+    call_type: direct
+    title: "존재하지 않는 테이블명 → TABLE_NOT_FOUND 에러"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "NONEXISTENT_TABLE_XYZ"
+    expected:
+      status: error
+      error_code: "TABLE_NOT_FOUND"
+      checks:
+        - {field: "error.code", op: "eq", value: "TABLE_NOT_FOUND"}
+        - {field: "error.message", op: "contains", value: "NONEXISTENT_TABLE_XYZ"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "NONEXISTENT_TABLE_XYZ"}'
+
+  - id: T03-008
+    category: negative
+    call_type: direct
+    title: "빈 문자열 테이블명 → TABLE_NOT_FOUND (현재 구현 동작)"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: ""
+    expected:
+      status: error
+      error_code: "TABLE_NOT_FOUND"
+      checks:
+        - {field: "error.code", op: "eq", value: "TABLE_NOT_FOUND"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": ""}'
+
+  - id: T03-009
+    category: negative
+    call_type: direct
+    title: "타 스키마 pg_catalog.pg_class → TABLE_NOT_FOUND (Mock 은 스키마 접두사를 떼고 pg_class 를 찾음)"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "pg_catalog.pg_class"
+    expected:
+      status: error
+      error_code: "TABLE_NOT_FOUND"
+      checks:
+        - {field: "error.code", op: "in", value: ["TABLE_NOT_FOUND", "ACCESS_DENIED"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "pg_catalog.pg_class"}'
+
+  - id: T03-010
+    category: negative
+    call_type: direct
+    title: "대문자 테이블명 'CUSTOMER' → 대소문자 비구분으로 customer 조회 성공"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "CUSTOMER"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "customer"}
+        - {field: "columns", op: "length_eq", value: 10}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "CUSTOMER"}'
+
+  - id: T03-011
+    category: edge
+    call_type: direct
+    title: "film_category 스키마 → 복합 PK, FK 2개 (film_id, category_id)"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "film_category"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "film_category"}
+        - {field: "primary_key", op: "contains_all", value: ["film_id", "category_id"]}
+        - {field: "foreign_keys", op: "length_eq", value: 2}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["film", "category"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "film_category"}'
+
+  - id: T03-012
+    category: edge
+    call_type: direct
+    title: "category 소형 코드 마스터(16행) 스키마 → FK 없음"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "category"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "category"}
+        - {field: "foreign_keys", op: "length_eq", value: 0}
+        - {field: "columns[*].name", op: "contains_all", value: ["category_id", "name", "last_update"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "category"}'
+
+  - id: T03-013
+    category: edge
+    call_type: direct
+    title: "address 스키마 → district, city_id, postal_code, phone 컬럼과 city FK 확인"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "address"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "address"}
+        - {field: "columns[*].name", op: "contains_all", value: ["district", "city_id", "postal_code", "phone"]}
+        - {field: "foreign_keys[*].ref_table", op: "contains_any", value: ["city"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "address"}'
+
+  - id: T03-014
+    category: edge
+    call_type: direct
+    title: "film_actor 스키마 → FK 2개 (actor_id, film_id)"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "film_actor"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "film_actor"}
+        - {field: "foreign_keys", op: "length_eq", value: 2}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["actor", "film"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "film_actor"}'
+
+  - id: T03-015
+    category: edge
+    call_type: direct
+    title: "inventory 스키마 → 날짜 컬럼 없는 대형 테이블(last_update 만 있음), FK 2개"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "inventory"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "inventory"}
+        - {field: "columns", op: "length_eq", value: 4}
+        - {field: "columns[*].name", op: "contains_all", value: ["inventory_id", "film_id", "store_id", "last_update"]}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["film", "store"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "inventory"}'
+
+  - id: T03-016
+    category: edge
+    call_type: direct
+    title: "rental 스키마 → return_date 가 nullable(NULL=미반납)인지 확인"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "rental"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "rental"}
+        - {field: "columns[?name=='return_date'].nullable", op: "eq", value: true}
+        - {field: "columns[*].name", op: "contains_all", value: ["rental_date", "return_date", "inventory_id", "customer_id"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "rental"}'
+
+  - id: T03-017
+    category: edge
+    call_type: direct
+    title: "스키마 한정자 public.payment → FK 체인 검증"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "public.payment"
+    expected:
+      status: success
+      checks:
+        - {field: "table_name", op: "eq", value: "payment"}
+        - {field: "owner", op: "eq", value: "public"}
+        - {field: "foreign_keys", op: "length_eq", value: 3}
+        - {field: "foreign_keys[*].ref_table", op: "contains_all", value: ["customer", "staff", "rental"]}
+        - {field: "columns[*].name", op: "contains_all", value: ["rental_id", "staff_id", "payment_date", "amount"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params '{"table_name": "public.payment"}'
+
+  - id: T03-018
+    category: chat
+    call_type: chat
+    title: "자연어로 customer 테이블 컬럼 구조 조회 요청"
+    chat_prompt: "customer 테이블 컬럼 구조 알려줘"
+    expected:
+      tool_called: get_table_schema
+      status: success
+      human_verify: "응답에 customer 의 10개 컬럼 목록이 포함되어 있는지 확인. customer_id, first_name, email, active 등 주요 컬럼과 PK 정보가 표시되는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T03-019
+    category: chat
+    call_type: chat
+    title: "자연어로 결제 테이블 상세 스키마 조회 요청"
+    chat_prompt: "결제 테이블 상세 스키마 보여줘"
+    expected:
+      tool_called: get_table_schema
+      status: success
+      human_verify: "응답에 payment 테이블 스키마가 표시되는지 확인. FK 정보(customer, staff, rental 참조)와 payment_date, amount 컬럼이 포함되어 있는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T03-020
+    category: chat
+    call_type: chat
+    title: "자연어로 대여 테이블 컬럼 목록 조회 요청"
+    chat_prompt: "대여 테이블에 어떤 컬럼이 있어?"
+    expected:
+      tool_called: get_table_schema
+      status: success
+      human_verify: "응답에 rental 테이블의 컬럼 목록(rental_date, return_date, inventory_id, staff_id 등)이 포함되어 있는지 확인. customer_id, inventory_id FK 정보도 표시되는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"

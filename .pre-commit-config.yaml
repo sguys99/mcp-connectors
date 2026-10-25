@@ -1,0 +1,33 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  # 비밀 정보 유출 차단 (0-4). 루트 .gitleaks.toml 을 자동으로 읽음
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: check-added-large-files
+        args: ["--maxkb=30000"]
+      - id: requirements-txt-fixer
+
+  # rev 는 로컬 ruff(uv.lock) 버전과 맞춥니다. trailing comma 는 ruff format 이 처리하므로
+  # 충돌하던 add-trailing-comma 훅은 제거했습니다.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+exclude: |
+  (?x)^(
+    uv\.lock|
+    \.venv/
+  )

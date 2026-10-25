@@ -1,0 +1,20 @@
+[
+  {
+    "id": "repo-alpha",
+    "name": "alpha-service",
+    "description": "Payments domain backend service (sample)",
+    "default_branch": "main"
+  },
+  {
+    "id": "repo-beta",
+    "name": "beta-frontend",
+    "description": "Admin console frontend (sample)",
+    "default_branch": "main"
+  },
+  {
+    "id": "repo-gamma",
+    "name": "gamma-utils",
+    "description": "Shared utility library (sample)",
+    "default_branch": "develop"
+  }
+]

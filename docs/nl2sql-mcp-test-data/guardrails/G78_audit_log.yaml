@@ -1,0 +1,768 @@
+meta:
+  target: guardrail_78
+  guardrail_name: audit_log
+  error_code: ~
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+
+tests:
+  - id: G78-001
+    category: pass
+    call_type: direct
+    title: "search_tables_schema 호출 후 audit.db 기록 확인"
+    description: "T-01 도구 호출 후 audit.db에 tool_name=search_tables_schema 레코드가 생성되는지 검증. audit 로그는 모든 도구 호출을 기록해야 함"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "CUST%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params "{\"pattern\": \"CUST%\", \"limit\": 20}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status, call_time FROM audit_log ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] == 'search_tables_schema', f'Expected search_tables_schema, got {row[0]}'
+        assert row[1] == 'success', f'Expected success, got {row[1]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-002
+    category: pass
+    call_type: direct
+    title: "search_columns 호출 후 audit.db 기록 확인"
+    description: "T-02 search_columns 도구 호출 후 audit.db에 레코드가 생성되는지 검증"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "ACTIVE%"
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params "{\"column_pattern\": \"ACTIVE%\"}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status FROM audit_log ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] == 'search_columns', f'Expected search_columns, got {row[0]}'
+        assert row[1] == 'success', f'Expected success, got {row[1]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-003
+    category: pass
+    call_type: direct
+    title: "get_table_schema 호출 후 audit.db 기록 확인"
+    description: "T-03 get_table_schema(customer) 도구 호출 후 audit.db에 레코드가 생성되는지 검증"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "customer"
+    expected:
+      status: success
+      checks:
+        - {field: "columns | length", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params "{\"table_name\": \"customer\"}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status FROM audit_log ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] == 'get_table_schema', f'Expected get_table_schema, got {row[0]}'
+        assert row[1] == 'success', f'Expected success, got {row[1]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-004
+    category: pass
+    call_type: direct
+    title: "get_tables_schema 호출 후 audit.db 기록 확인"
+    description: "T-04 get_tables_schema([customer]) 도구 호출 후 audit.db에 레코드가 생성되는지 검증"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["customer"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params "{\"table_names\": [\"customer\"]}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status FROM audit_log ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] == 'get_tables_schema', f'Expected get_tables_schema, got {row[0]}'
+        assert row[1] == 'success', f'Expected success, got {row[1]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-005
+    category: pass
+    call_type: direct
+    title: "run_sql_query 성공 실행 후 audit.db result_status=success 확인"
+    description: "T-05 run_sql_query 유효 SELECT 실행 후 audit.db에 result_status=success 레코드가 생성되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status FROM audit_log WHERE tool_name='run_sql_query' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found for run_sql_query'
+        assert row[1] == 'success', f'Expected success, got {row[1]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-006
+    category: pass
+    call_type: direct
+    title: "차단된 SQL 호출 후 audit.db result_status=blocked 확인"
+    description: "WRITE_BLOCKED SQL(DELETE) 실행 후 audit.db에 result_status=blocked, error_type=WRITE_BLOCKED 레코드가 생성되어야 함. 가드레일 차단도 audit에 기록되어야 함 (result_status 어휘: success, blocked, error)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "DELETE FROM customer WHERE active = 0"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"DELETE FROM customer WHERE active = 0\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status, error_type FROM audit_log WHERE tool_name='run_sql_query' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[1] == 'blocked', f'Expected blocked, got {row[1]}'
+        assert row[2] == 'WRITE_BLOCKED', f'Expected WRITE_BLOCKED, got {row[2]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-007
+    category: pass
+    call_type: direct
+    title: "audit 레코드 latency_ms > 0 확인"
+    description: "도구 호출 후 audit.db 레코드의 latency_ms 필드가 0보다 큰 값인지 확인. 실행 시간이 측정되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM film WHERE language_id = 1"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM film WHERE language_id = 1\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT latency_ms FROM audit_log ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] > 0, f'Expected latency_ms > 0, got {row[0]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-008
+    category: pass
+    call_type: direct
+    title: "audit 레코드 row_count 필드 확인"
+    description: "run_sql_query 성공 후 audit.db 레코드에 row_count 필드가 기록되어야 함. 실제 반환된 행 수와 일치해야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id FROM film WHERE language_id = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT film_id FROM film WHERE language_id = 1 LIMIT 5\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT row_count FROM audit_log WHERE tool_name='run_sql_query' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] is not None, 'row_count field is None'
+        assert row[0] >= 0, f'Expected row_count >= 0, got {row[0]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-009
+    category: pass
+    call_type: direct
+    title: "audit 레코드 session_id 필드 non-null 확인"
+    description: "도구 호출 후 audit.db 레코드의 session_id 필드가 null이 아닌지 확인. 세션 추적이 가능해야 함"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "FILM%"
+        limit: 10
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params "{\"pattern\": \"FILM%\", \"limit\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT session_id FROM audit_log ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] is not None, 'session_id is None'
+        assert len(str(row[0])) > 0, 'session_id is empty'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-010
+    category: pass
+    call_type: direct
+    title: "audit 레코드 call_time ISO8601 형식 확인"
+    description: "audit.db 레코드의 call_time 필드가 ISO8601 형식(YYYY-MM-DDTHH:MM:SS 또는 유사)인지 확인"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, inventory_id FROM rental WHERE rental_date >= DATE '2025-01-01' AND rental_date < DATE '2026-01-01' LIMIT 3"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, inventory_id FROM rental WHERE rental_date >= DATE '2025-01-01' AND rental_date < DATE '2026-01-01' LIMIT 3\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, re, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT call_time FROM audit_log ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        iso_pattern = r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}'
+        assert re.match(iso_pattern, str(row[0])), f'call_time not ISO8601: {row[0]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-011
+    category: block
+    call_type: direct
+    title: "MASS_SCAN_BLOCKED SQL 후 audit.db error_type 기록 확인"
+    description: "WHERE 없는 SQL(MASS_SCAN_BLOCKED) 실행 후 audit.db에 error_type=MASS_SCAN_BLOCKED가 기록되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, customer_id FROM rental"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, customer_id FROM rental\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status, error_type FROM audit_log WHERE result_status='blocked' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No blocked audit record found'
+        assert row[2] == 'MASS_SCAN_BLOCKED', f'Expected MASS_SCAN_BLOCKED, got {row[2]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-012
+    category: block
+    call_type: direct
+    title: "PII_COLUMN_BLOCKED SQL 후 audit.db error_type 기록 확인"
+    description: "PII 컬럼(email) 조회 SQL 실행 후 audit.db에 error_type=PII_COLUMN_BLOCKED가 기록되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT email FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT email FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status, error_type FROM audit_log WHERE result_status='blocked' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No blocked audit record found'
+        assert row[2] == 'PII_COLUMN_BLOCKED', f'Expected PII_COLUMN_BLOCKED, got {row[2]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-013
+    category: block
+    call_type: direct
+    title: "DATE_RANGE_EXCEEDED SQL 후 audit.db error_type 기록 확인"
+    description: "날짜 범위 초과 SQL(약 6년 범위의 BETWEEN) 실행 후 audit.db에 error_type=DATE_RANGE_EXCEEDED 또는 관련 오류 코드가 기록되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT payment_id, amount FROM payment WHERE payment_date BETWEEN DATE '2020-01-01' AND DATE '2026-06-18' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "DATE_RANGE_EXCEEDED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT payment_id, amount FROM payment WHERE payment_date BETWEEN DATE '2020-01-01' AND DATE '2026-06-18' LIMIT 10\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status, error_type FROM audit_log WHERE result_status='blocked' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No blocked audit record found'
+        assert row[1] == 'blocked', f'Expected blocked status, got {row[1]}'
+        assert row[2] is not None, 'error_type is None'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-014
+    category: edge
+    call_type: direct
+    title: "연속 10회 호출 후 audit.db 10개 신규 레코드 확인"
+    description: "run_sql_query 10회 연속 호출 후 audit.db에 10개의 신규 레코드가 생성되었는지 확인. 모든 호출이 빠짐없이 기록되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM film WHERE language_id = 1"
+        max_rows: 10
+      repeat: 10  # 러너가 같은 호출을 10번 합니다 (execution.command 와 같은 동작)
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python -c "
+        import subprocess, json
+        for i in range(10):
+            result = subprocess.run([
+                'python', 'scripts/mcp_cli.py', 'call',
+                '--server', 'nl2sql-mcp',
+                '--tool', 'run_sql_query',
+                '--params', '{\"sql\": \"SELECT COUNT(*) FROM film WHERE language_id = 1\", \"max_rows\": 10}'
+            ], capture_output=True, text=True)
+            print(f'Call {i+1}: {result.returncode}')
+        print('ALL 10 CALLS DONE')
+        "
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT COUNT(*) FROM audit_log WHERE tool_name='run_sql_query' ORDER BY call_time DESC LIMIT 1\")
+        total = cur.fetchone()[0]
+        print(f'Total run_sql_query records: {total}')
+        assert total >= 10, f'Expected at least 10 records, got {total}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-015
+    category: edge
+    call_type: direct
+    title: "audit.db sql_text 필드에 SQL 텍스트 기록 확인"
+    description: "run_sql_query 호출 후 audit.db의 sql_text 필드에 실행된 SQL 텍스트(또는 마스킹된 버전)가 기록되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, active FROM customer WHERE active = 1 LIMIT 3"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, active FROM customer WHERE active = 1 LIMIT 3\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT sql_text FROM audit_log WHERE tool_name='run_sql_query' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No audit record found'
+        assert row[0] is not None, 'sql_text is None'
+        assert len(str(row[0])) > 0, 'sql_text is empty'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-016
+    category: edge
+    call_type: direct
+    title: "30일 이상 된 audit 레코드 정리 기능 확인"
+    description: "nl2sql_mcp.guardrails.audit_log.purge_old_audit_records(db_path, retention_days) 가 30일 이상 된 레코드를 삭제하는지 확인. 서버도 시작할 때 AUDIT_RETENTION_DAYS 기준으로 한 번 호출함. 테스트용 오래된 레코드를 삽입하고 정리 후 삭제되었는지 검증"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id FROM film WHERE language_id = 1 LIMIT 1"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT film_id FROM film WHERE language_id = 1 LIMIT 1\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import asyncio, os, sqlite3, sys
+        from datetime import datetime, timedelta, timezone
+        sys.path.insert(0, 'src/mcp-servers')
+        from nl2sql_mcp.guardrails.audit_log import purge_old_audit_records
+        path = os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db')
+        conn = sqlite3.connect(path)
+        cur = conn.cursor()
+        # Insert a 31-day-old test record (call_time 은 UTC ISO 8601)
+        old_time = (datetime.now(timezone.utc) - timedelta(days=31)).isoformat()
+        cur.execute(\"INSERT INTO audit_log (tool_name, result_status, call_time, latency_ms) VALUES ('test_old_tool', 'success', ?, 100)\", (old_time,))
+        old_id = cur.lastrowid
+        conn.commit()
+        print(f'Inserted old record id={old_id}')
+        deleted = asyncio.run(purge_old_audit_records(db_path=path, retention_days=30))
+        print(f'Purged rows: {deleted}')
+        cur.execute(\"SELECT COUNT(*) FROM audit_log WHERE id=?\", (old_id,))
+        count = cur.fetchone()[0]
+        print(f'Old record count after purge: {count}')
+        assert count == 0, 'old record was not purged'
+        conn.close()
+        print('AUDIT PURGE CHECK DONE')
+        "
+      expected: "AUDIT PURGE CHECK DONE"
+
+  - id: G78-017
+    category: edge
+    call_type: direct
+    title: "QUERY_TIMEOUT 후 audit.db QUERY_TIMEOUT 기록 확인"
+    description: "주의: 서버 환경변수 GUARDRAIL_TIMEOUT_SEC=1 설정이 필요함(Mock 백엔드면 NL2SQL_MOCK_DELAY_SEC=2 도 함께). timeout 발생 SQL 실행 후 audit.db에 error_type=QUERY_TIMEOUT이 기록되어야 함"
+    requires:
+      backend: mock
+      reason: "타임아웃을 Mock 지연(NL2SQL_MOCK_DELAY_SEC)으로 재현함. 실 Pagila 는 1초 안에 끝나고 GUARDRAIL_TIMEOUT_SEC 는 1초 미만을 줄 수 없음"
+    env:
+      GUARDRAIL_TIMEOUT_SEC: "1"
+      NL2SQL_MOCK_DELAY_SEC: "2"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, COUNT(p.payment_id) AS cnt FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= DATE '2025-01-01' AND p.payment_date < DATE '2026-01-01' GROUP BY c.customer_id ORDER BY cnt DESC"
+        max_rows: 100
+    expected:
+      status: error
+      error_code: "QUERY_TIMEOUT"
+      checks: []
+    execution:
+      command: |
+        GUARDRAIL_TIMEOUT_SEC=1 NL2SQL_MOCK_DELAY_SEC=2 python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, COUNT(p.payment_id) AS cnt FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= DATE '2025-01-01' AND p.payment_date < DATE '2026-01-01' GROUP BY c.customer_id ORDER BY cnt DESC\", \"max_rows\": 100}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        cur.execute(\"SELECT tool_name, result_status, error_type FROM audit_log WHERE error_type='QUERY_TIMEOUT' ORDER BY call_time DESC LIMIT 1\")
+        row = cur.fetchone()
+        print(row)
+        assert row is not None, 'No QUERY_TIMEOUT audit record found'
+        assert row[1] == 'error', f'Expected error status, got {row[1]}'
+        assert row[2] == 'QUERY_TIMEOUT', f'Expected QUERY_TIMEOUT, got {row[2]}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-018
+    category: edge
+    call_type: direct
+    title: "audit.db 파일 경로 확인"
+    description: "AUDIT_LOG_PATH 환경변수 또는 기본값(저장소 루트 기준 var/nl2sql_mcp/audit.db)에 감사 DB 파일이 생성되었는지 확인. 서버는 상대 경로를 실행 위치가 아니라 저장소 루트 기준으로 풂"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id FROM film WHERE language_id = 1 LIMIT 1"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT film_id FROM film WHERE language_id = 1 LIMIT 1\", \"max_rows\": 10}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        audit_path = os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db')
+        print(f'Checking audit.db at: {audit_path}')
+        assert os.path.exists(audit_path), f'audit.db not found at {audit_path}'
+        conn = sqlite3.connect(audit_path)
+        cur = conn.cursor()
+        cur.execute(\"SELECT COUNT(*) FROM audit_log\")
+        count = cur.fetchone()[0]
+        print(f'Total audit records: {count}')
+        assert count > 0, 'No records in audit.db'
+        conn.close()
+        print('AUDIT FILE CHECK PASSED')
+        "
+      expected: "AUDIT FILE CHECK PASSED"
+
+  - id: G78-019
+    category: edge
+    call_type: direct
+    title: "5개 서로 다른 도구 호출 후 각각 tool_name 기록 확인"
+    description: "search_tables_schema, search_columns, get_table_schema, get_tables_schema, run_sql_query 각각 1회 호출 후 audit.db에 5개 각각의 tool_name이 기록되었는지 확인"
+    input:
+      # 러너가 본 호출 전에 차례로 부르는 4개 도구 (execution.command 와 같은 동작)
+      setup_calls:
+        - {tool: search_tables_schema, params: {pattern: "CUST%", limit: 5}}
+        - {tool: search_columns, params: {column_pattern: "CUSTOMER_ID"}}
+        - {tool: get_table_schema, params: {table_name: "rental"}}
+        - {tool: get_tables_schema, params: {table_names: ["film"]}}
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM customer WHERE active = 1"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python -c "
+        import subprocess
+        tools = [
+            ('search_tables_schema', '{\"pattern\": \"CUST%\", \"limit\": 5}'),
+            ('search_columns', '{\"column_pattern\": \"CUSTOMER_ID\"}'),
+            ('get_table_schema', '{\"table_name\": \"rental\"}'),
+            ('get_tables_schema', '{\"table_names\": [\"film\"]}'),
+            ('run_sql_query', '{\"sql\": \"SELECT COUNT(*) FROM customer WHERE active = 1\", \"max_rows\": 10}'),
+        ]
+        for tool, params in tools:
+            r = subprocess.run([
+                'python', 'scripts/mcp_cli.py', 'call',
+                '--server', 'nl2sql-mcp',
+                '--tool', tool, '--params', params
+            ], capture_output=True, text=True)
+            print(f'{tool}: returncode={r.returncode}')
+        print('ALL 5 TOOL CALLS DONE')
+        "
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        expected_tools = {'search_tables_schema', 'search_columns', 'get_table_schema', 'get_tables_schema', 'run_sql_query'}
+        cur.execute(\"SELECT DISTINCT tool_name FROM audit_log ORDER BY call_time DESC LIMIT 20\")
+        found = {row[0] for row in cur.fetchall()}
+        print(f'Found tools in audit: {found}')
+        missing = expected_tools - found
+        assert not missing, f'Missing tool_names in audit: {missing}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"
+
+  - id: G78-020
+    category: edge
+    call_type: direct
+    title: "audit 레코드 tool_name 유효값 검증"
+    description: "audit.db의 모든 tool_name이 허용된 도구 목록(search_tables_schema, search_columns, get_table_schema, get_tables_schema, run_sql_query) 중 하나인지 확인. 잘못된 tool_name 기록 방지"
+    input:
+      tool: get_table_schema
+      params:
+        table_name: "payment"
+    expected:
+      status: success
+      checks:
+        - {field: "columns | length", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_table_schema \
+          --params "{\"table_name\": \"payment\"}"
+    audit_verification:
+      command: |
+        python -c "
+        import os, sqlite3
+        conn = sqlite3.connect(os.environ.get('AUDIT_LOG_PATH', 'var/nl2sql_mcp/audit.db'))
+        cur = conn.cursor()
+        valid_tools = {'search_tables_schema', 'search_columns', 'get_table_schema', 'get_tables_schema', 'run_sql_query'}
+        cur.execute(\"SELECT DISTINCT tool_name FROM audit_log\")
+        all_tools = {row[0] for row in cur.fetchall()}
+        print(f'All tool_names in audit: {all_tools}')
+        invalid = all_tools - valid_tools
+        assert not invalid, f'Invalid tool_names found in audit: {invalid}'
+        conn.close()
+        print('AUDIT CHECK PASSED')
+        "
+      expected: "AUDIT CHECK PASSED"

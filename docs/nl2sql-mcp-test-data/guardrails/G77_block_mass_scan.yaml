@@ -1,0 +1,414 @@
+meta:
+  target: guardrail_77
+  guardrail_name: block_mass_scan
+  error_code: MASS_SCAN_BLOCKED
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+
+tests:
+  - id: G77-001
+    category: block
+    call_type: direct
+    title: "rental 전체 스캔 (WHERE 없음) 차단"
+    description: "WHERE 절 없이 큰 테이블 rental(약 1만 6천 건) 전체 조회. require_where 가드레일에 의해 MASS_SCAN_BLOCKED 반환되어야 함. (P2-6) customer(599행)처럼 GUARDRAIL_MASS_SCAN_ROW_THRESHOLD(기본 10000) 이하인 작은 테이블은 WHERE 없이도 허용되므로 대상을 rental 로 바꿈"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, customer_id FROM rental"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, customer_id FROM rental\", \"max_rows\": 10}"
+
+  - id: G77-002
+    category: block
+    call_type: direct
+    title: "payment 전체 스캔 (WHERE 없음) 차단"
+    description: "WHERE 절 없이 payment 전체 테이블 조회(약 1만 4천 건). MASS_SCAN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT amount, payment_date FROM payment"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT amount, payment_date FROM payment\", \"max_rows\": 10}"
+
+  - id: G77-003
+    category: block
+    call_type: direct
+    title: "rental 전체 스캔 (WHERE 없음) 차단"
+    description: "WHERE 절 없이 rental 전체 테이블 조회(약 1만 6천 건). MASS_SCAN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, return_date FROM rental"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, return_date FROM rental\", \"max_rows\": 10}"
+
+  - id: G77-004
+    category: block
+    call_type: direct
+    title: "1=1 항진 조건 차단"
+    description: "WHERE 1=1 항진 조건(tautology)은 실질적인 WHERE가 없는 것과 동일. MASS_SCAN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id FROM film WHERE 1=1 LIMIT 6"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT film_id FROM film WHERE 1=1 LIMIT 6\", \"max_rows\": 10}"
+
+  - id: G77-005
+    category: block
+    call_type: direct
+    title: "WHERE TRUE 항진 조건 차단"
+    description: "WHERE TRUE 항진 조건. 1=1과 동일하게 실질적 필터 없는 전체 스캔으로 MASS_SCAN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id FROM customer WHERE TRUE"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id FROM customer WHERE TRUE\", \"max_rows\": 10}"
+
+  - id: G77-006
+    category: block
+    call_type: direct
+    title: "1=1과 유효 조건 혼합 — 항진 조건 포함 시 차단"
+    description: "WHERE 1=1 AND active = 1: 유효한 조건이 있어도 1=1 항진 조건이 포함되면 MASS_SCAN_BLOCKED 반환되어야 함. SQL 인젝션 우회 패턴이므로 반드시 차단"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id FROM customer WHERE 1=1 AND active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id FROM customer WHERE 1=1 AND active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-007
+    category: block
+    call_type: direct
+    title: "콤마 구문 카티전 조인 (WHERE 없음) 차단"
+    description: "FROM customer c, payment p 콤마 구문 카티전 조인 + WHERE 없음. 크로스 조인으로 데이터 폭발 위험. MASS_SCAN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, p.payment_id FROM customer c, payment p LIMIT 10"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, p.payment_id FROM customer c, payment p LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-008
+    category: block
+    call_type: direct
+    title: "명시적 CROSS JOIN 차단"
+    description: "customer CROSS JOIN rental: ON 조건 없는 명시적 CROSS JOIN. 카티전 곱으로 대용량 데이터 생성 위험. MASS_SCAN_BLOCKED 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id FROM customer c CROSS JOIN rental r LIMIT 10"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id FROM customer c CROSS JOIN rental r LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-009
+    category: pass
+    call_type: direct
+    title: "유효한 WHERE 조건 — 차단 없이 통과"
+    description: "WHERE active = 1 유효 조건 포함. 전체 스캔 또는 항진 조건 없으므로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-010
+    category: pass
+    call_type: direct
+    title: "날짜 조건 COUNT — 차단 없이 통과"
+    description: "WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' 날짜 조건 포함 COUNT 집계. 유효 WHERE 조건이므로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'\", \"max_rows\": 10}"
+
+  - id: G77-011
+    category: pass
+    call_type: direct
+    title: "ON 조건 있는 INNER JOIN — 차단 없이 통과"
+    description: "JOIN payment p ON c.customer_id = p.customer_id + WHERE 조건. ON 조건과 WHERE 모두 있는 정상 JOIN으로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, p.amount FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, p.amount FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-012
+    category: pass
+    call_type: direct
+    title: "rental 날짜 조건 조회, 차단 없이 통과"
+    description: "rental 에서 rental_date 날짜 조건 포함 조회. 유효 WHERE 조건으로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, inventory_id, rental_date FROM rental WHERE rental_date >= DATE '2025-01-01' AND rental_date < DATE '2026-01-01' LIMIT 6"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, inventory_id, rental_date FROM rental WHERE rental_date >= DATE '2025-01-01' AND rental_date < DATE '2026-01-01' LIMIT 6\", \"max_rows\": 10}"
+
+  - id: G77-013
+    category: pass
+    call_type: direct
+    title: "WHERE 조건 있는 COUNT — 차단 없이 통과"
+    description: "WHERE active = 1 조건 있는 COUNT(*). 유효 WHERE 조건으로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM customer WHERE active = 1"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM customer WHERE active = 1\", \"max_rows\": 10}"
+
+  - id: G77-014
+    category: edge
+    call_type: direct
+    title: "WHERE 없는 큰 테이블 COUNT 차단"
+    description: "SELECT COUNT(*) FROM rental: WHERE 없는 집계. (P2-6 결정) 집계도 테이블 전체를 읽으므로 require_where 를 똑같이 적용해, 큰 테이블(rental 약 1만 6천 행)이면 MASS_SCAN_BLOCKED. 작은 테이블(customer 599행)의 WHERE 없는 COUNT 는 허용"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM rental"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM rental\", \"max_rows\": 10}"
+
+  - id: G77-015
+    category: edge
+    call_type: direct
+    title: "IS NOT NULL 조건 — 항진 조건으로 오인하지 않음"
+    description: "WHERE customer_id IS NOT NULL은 항진 조건이 아닌 유효 NOT NULL 필터. block_tautology가 IS NOT NULL을 차단하지 않고 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id FROM customer WHERE customer_id IS NOT NULL LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id FROM customer WHERE customer_id IS NOT NULL LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-016
+    category: edge
+    call_type: direct
+    title: "콤마 구문 조인 + WHERE 조인 조건 — 유효한 조인으로 통과"
+    description: "FROM customer c, payment p WHERE c.customer_id = p.customer_id: 콤마 구문이지만 WHERE에 명시적 조인 조건이 있어 카티전 조인이 아님. success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, p.payment_id FROM customer c, payment p WHERE c.customer_id = p.customer_id AND p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, p.payment_id FROM customer c, payment p WHERE c.customer_id = p.customer_id AND p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-017
+    category: edge
+    call_type: direct
+    title: "require_where=False 설정 시 WHERE 없는 SELECT 통과"
+    description: "주의: 서버 환경변수 GUARDRAIL_REQUIRE_WHERE=false 설정이 필요함(러너는 env 키로 넘김). require_where 비활성화 시 WHERE 없는 SELECT가 MASS_SCAN_BLOCKED 없이 통과되어야 함. (P2-6) 작은 테이블은 설정과 무관하게 통과하므로 대상을 큰 테이블 rental 로 바꿈"
+    env:
+      GUARDRAIL_REQUIRE_WHERE: "false"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id FROM rental LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        GUARDRAIL_REQUIRE_WHERE=false python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id FROM rental LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-018
+    category: edge
+    call_type: direct
+    title: "block_tautology=False 설정 시 1=1 조건 통과"
+    description: "주의: 서버 환경변수 GUARDRAIL_BLOCK_TAUTOLOGY=false 설정이 필요함(러너는 env 키로 넘김). tautology 차단 비활성화 시 WHERE 1=1 SQL이 MASS_SCAN_BLOCKED 없이 통과되어야 함"
+    env:
+      GUARDRAIL_BLOCK_TAUTOLOGY: "false"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id FROM customer WHERE 1=1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        GUARDRAIL_BLOCK_TAUTOLOGY=false python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id FROM customer WHERE 1=1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-019
+    category: edge
+    call_type: direct
+    title: "OR 조건 복합 WHERE — 차단 없이 통과"
+    description: "WHERE active = 1 OR active = 0: OR 조건은 항진 조건이 아님. 유효한 WHERE 조건으로 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, active FROM customer WHERE active = 1 OR active = 0 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, active FROM customer WHERE active = 1 OR active = 0 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G77-020
+    category: chat
+    call_type: chat
+    title: "자연어 전체 고객 목록 요청 — MASS_SCAN_BLOCKED 반응 확인"
+    description: "자연어 '모든 고객 목록을 다 보여줘' 요청 시 AI가 WHERE 없는 SQL을 생성하면 MASS_SCAN_BLOCKED가 반환되고 AI가 이를 사용자에게 알려야 함"
+    input:
+      tool: nl2sql_chat
+      params:
+        message: "모든 고객 목록을 다 보여줘"
+        session_id: "test-g77-020"
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool nl2sql_chat \
+          --params "{\"message\": \"모든 고객 목록을 다 보여줘\", \"session_id\": \"test-g77-020\"}"

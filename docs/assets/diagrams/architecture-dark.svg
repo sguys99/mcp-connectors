@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="914" viewBox="0 0 1200 914" role="img" aria-labelledby="title desc">
+<title id="title">MCP Connectors architecture</title>
+<desc id="desc">Claude Code skills /mcp-spec-writer and /mcp-server-builder generate MCP servers under src/mcp-servers (starter_mcp, mock_repo_mcp, nl2sql_mcp) on shared _common modules, and add entries to configs/mcp_servers.yaml. The CLI and the Next.js Frontend read that registry. The Frontend reaches registered servers through /api/mcp/[server], runs Chat through /api/chat with LLM providers, and reaches runtime servers directly or through the opt-in /api/mcp-runtime.</desc>
+<style>
+.bg{fill:#0d1314;stroke:#21292c}
+.zone{fill:#131a1b;stroke:#21292c}
+.card{fill:#192123;stroke:#2b3537}
+.card-accent{fill:#03343c;stroke:#13808a}
+.chip{fill:#21292c}
+.chip-accent{fill:#192123;stroke:#13808a}
+.rule{stroke:#2b3537}
+text{font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;fill:#f8fbfb}
+.mono{font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace}
+.h1{font-size:24px;font-weight:600;letter-spacing:-0.015em}
+.sub{font-size:15px;fill:#9ba7aa}
+.caps{font-size:12px;font-weight:600;letter-spacing:0.08em;fill:#9ba7aa}
+.t{font-size:17px;font-weight:600}
+.tm{font-size:15.5px;font-weight:600}
+.d{font-size:14px;fill:#9ba7aa}
+.dm{font-size:13.5px;fill:#f8fbfb}
+.dmm{font-size:13.5px;fill:#9ba7aa}
+.c{font-size:13px;fill:#c3cccf}
+.ca{font-size:13px;fill:#55dae1}
+.lbl{font-size:12.5px;fill:#9ba7aa}
+.lbla{font-size:12.5px;fill:#55dae1;font-weight:500}
+.accent{fill:#55dae1}
+.badge{fill:#37d6dd}
+.badge-t{fill:#070c0e;font-size:14px;font-weight:700}
+.w{fill:none;stroke:#6a777a;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.wa{fill:none;stroke:#37d6dd;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.wd{stroke-dasharray:5 5}
+.dot{fill:#6a777a}
+.ph{fill:none;stroke:#6a777a;stroke-dasharray:4 4}
+.chip-dash{fill:none;stroke:#6a777a;stroke-dasharray:3 3}
+.muted{fill:#9ba7aa}
+.path{fill:#c3cccf}
+.phase{stroke:#2b3537}
+.phase-a{stroke:#13808a}
+.ah{fill:none;stroke:#6a777a;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.aha{fill:none;stroke:#37d6dd;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<defs>
+<marker id="ah" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="ah" d="M4.5 2.5 L10.5 6 L4.5 9.5"/></marker>
+<marker id="aha" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="aha" d="M4.5 2.5 L10.5 6 L4.5 9.5"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="1199" height="913" rx="14" class="bg"/>
+<text x="40" y="58" class="h1">MCP Connectors architecture</text>
+<text x="40" y="84" class="sub">Skills generate servers. The CLI and the Frontend find them in one registry and call them.</text>
+<rect x="40.5" y="112.5" width="879" height="127" rx="10" class="zone"/><text x="64" y="142" class="caps">BUILD WITH CLAUDE CODE SKILLS</text>
+<rect x="64.5" y="160.5" width="231" height="59" rx="8" class="card-accent"/>
+<text x="80" y="185" class="tm mono accent">/mcp-spec-writer</text>
+<text x="80" y="206" class="d">Interview, 10-section spec</text>
+<rect x="340.5" y="160.5" width="271" height="59" rx="8" class="card"/>
+<text x="356" y="185" class="tm">Server spec</text>
+<text x="356" y="206" class="dmm mono">docs/mcp-spec/&lt;name&gt;_v0.X.md</text>
+<rect x="656.5" y="160.5" width="239" height="59" rx="8" class="card-accent"/>
+<text x="672" y="185" class="tm mono accent">/mcp-server-builder</text>
+<text x="672" y="206" class="d">Server, tests, registry entry</text>
+<path d="M302 190 L334 190" class="wa" marker-end="url(#aha)"/>
+<path d="M618 190 L650 190" class="wa" marker-end="url(#aha)"/>
+<rect x="968.5" y="112.5" width="191" height="127" rx="10" class="zone"/>
+<text x="988" y="142" class="caps">LEGEND</text>
+<path d="M988 166 L1018 166" class="wa" marker-end="url(#aha)"/>
+<text x="1030" y="170.5" class="lbl">Generates, writes</text>
+<path d="M988 187 L1018 187" class="w" marker-end="url(#ah)"/>
+<text x="1030" y="191.5" class="lbl">Calls at runtime</text>
+<path d="M988 208 L1018 208" class="w wd" marker-end="url(#ah)"/>
+<text x="1030" y="212.5" class="lbl">Opt-in or optional</text>
+<path d="M988 229 L1018 229" class="w"/>
+<circle cx="1003" cy="229" r="3.5" class="dot"/>
+<text x="1030" y="233.5" class="lbl">Joins a path</text>
+<rect x="40.5" y="296.5" width="435" height="577" rx="10" class="zone"/><text x="64" y="326" class="caps">MCP SERVERS</text><text x="168.6" y="326" class="lbl mono">src/mcp-servers/</text>
+<rect x="64.5" y="344.5" width="387" height="103" rx="8" class="card"/>
+<text x="80" y="371" class="tm mono">_common/</text>
+<text x="164" y="371" class="d">Shared modules, used by every server</text>
+<rect x="80" y="386" width="51" height="24" rx="4" class="chip"/><text x="105.5" y="402.5" class="c mono" text-anchor="middle">auth</text><rect x="137" y="386" width="51" height="24" rx="4" class="chip"/><text x="162.5" y="402.5" class="c mono" text-anchor="middle">cors</text><rect x="194" y="386" width="43" height="24" rx="4" class="chip"/><text x="215.5" y="402.5" class="c mono" text-anchor="middle">env</text><rect x="243" y="386" width="67" height="24" rx="4" class="chip"/><text x="276.5" y="402.5" class="c mono" text-anchor="middle">errors</text>
+<rect x="80" y="416" width="75" height="24" rx="4" class="chip"/><text x="117.5" y="432.5" class="c mono" text-anchor="middle">logging</text><rect x="161" y="416" width="75" height="24" rx="4" class="chip"/><text x="198.5" y="432.5" class="c mono" text-anchor="middle">masking</text><rect x="242" y="416" width="59" height="24" rx="4" class="chip"/><text x="271.5" y="432.5" class="c mono" text-anchor="middle">retry</text><rect x="307" y="416" width="59" height="24" rx="4" class="chip"/><text x="336.5" y="432.5" class="c mono" text-anchor="middle">trust</text>
+<rect x="64.5" y="464.5" width="387" height="69" rx="8" class="card"/><text x="80" y="491" class="tm mono">starter_mcp</text><rect x="273" y="475" width="59" height="24" rx="4" class="chip"/><text x="302.5" y="491.5" class="c mono" text-anchor="middle">stdio</text><rect x="338" y="475" width="98" height="24" rx="4" class="chip"/><text x="387" y="491.5" class="c mono" text-anchor="middle">HTTP :8001</text><text x="80" y="514" class="d">Canonical starter and regression baseline</text>
+<rect x="64.5" y="550.5" width="387" height="69" rx="8" class="card"/><text x="80" y="577" class="tm mono">mock_repo_mcp</text><rect x="338" y="561" width="98" height="24" rx="4" class="chip"/><text x="387" y="577.5" class="c mono" text-anchor="middle">HTTP :8002</text><text x="80" y="600" class="d">Code repository baseline on fixtures</text>
+<rect x="64.5" y="636.5" width="387" height="105" rx="8" class="card"/><text x="80" y="663" class="tm mono">nl2sql_mcp</text><rect x="273" y="647" width="59" height="24" rx="4" class="chip"/><text x="302.5" y="663.5" class="c mono" text-anchor="middle">stdio</text><rect x="338" y="647" width="98" height="24" rx="4" class="chip"/><text x="387" y="663.5" class="c mono" text-anchor="middle">HTTP :8004</text><text x="80" y="686" class="d">Natural language to SQL with guardrails</text><text x="80" y="720" class="lbl">DB</text><rect x="106" y="703" width="118" height="24" rx="4" class="chip"/><text x="165" y="719.5" class="c" text-anchor="middle">Mock (default)</text><rect x="230" y="703" width="154" height="24" rx="4" class="chip"/><text x="307" y="719.5" class="c" text-anchor="middle">PostgreSQL + Pagila</text><rect x="390.5" y="703.5" width="59" height="23" rx="4" class="chip-dash"/><text x="420" y="719.5" class="c" text-anchor="middle">Oracle</text>
+<rect x="64.5" y="758.5" width="387" height="65" rx="8" class="ph"/>
+<text x="80" y="785" class="tm mono muted">&lt;your_server&gt;/</text>
+<text x="80" y="807" class="d">Next server, generated from its spec</text>
+<rect x="548.5" y="296.5" width="371" height="577" rx="10" class="zone"/><text x="572" y="326" class="caps">CLIENTS</text>
+<rect x="572.5" y="344.5" width="323" height="59" rx="8" class="card"/>
+<text x="588" y="369" class="tm">Server registry</text>
+<text x="588" y="390" class="dmm mono">configs/mcp_servers.yaml</text>
+<rect x="572.5" y="444.5" width="323" height="103" rx="8" class="card"/>
+<text x="588" y="471" class="t">CLI</text>
+<text x="624" y="471" class="dmm mono">scripts/mcp_cli.py</text>
+<rect x="588" y="488" width="98" height="24" rx="4" class="chip"/><text x="637" y="504.5" class="c mono" text-anchor="middle">list-tools</text><rect x="692" y="488" width="51" height="24" rx="4" class="chip"/><text x="717.5" y="504.5" class="c mono" text-anchor="middle">call</text><rect x="749" y="488" width="51" height="24" rx="4" class="chip"/><text x="774.5" y="504.5" class="c mono" text-anchor="middle">test</text>
+<text x="588" y="534" class="lbl">test replays scenario YAML files</text>
+<rect x="572.5" y="576.5" width="323" height="267" rx="8" class="card"/>
+<text x="588" y="604" class="t">Frontend</text>
+<text x="670" y="604" class="d">Next.js</text>
+<text x="588" y="632" class="caps">PAGES</text>
+<rect x="588" y="642" width="81" height="24" rx="4" class="chip"/><text x="628.5" y="658.5" class="c" text-anchor="middle">Dashboard</text><rect x="675" y="642" width="81" height="24" rx="4" class="chip"/><text x="715.5" y="658.5" class="c" text-anchor="middle">Inspector</text><rect x="762" y="642" width="45" height="24" rx="4" class="chip"/><text x="784.5" y="658.5" class="c" text-anchor="middle">Chat</text><rect x="813" y="642" width="74" height="24" rx="4" class="chip"/><text x="850" y="658.5" class="c" text-anchor="middle">Settings</text>
+<line x1="588" y1="682.5" x2="880" y2="682.5" class="rule"/>
+<text x="588" y="710" class="caps">SERVER ROUTES</text>
+<text x="588" y="743" class="dm mono">/api/mcp/[server]</text>
+<text x="880" y="743" class="lbl" text-anchor="end">Proxy, adds the API key</text>
+<text x="588" y="783" class="dm mono">/api/mcp-runtime</text>
+<text x="880" y="783" class="lbl" text-anchor="end">Runtime proxy, opt-in</text>
+<text x="588" y="823" class="dm mono">/api/chat</text>
+<text x="880" y="823" class="lbl" text-anchor="end">LLM tool-use loop</text>
+<text x="972" y="326" class="caps">EXTERNAL</text>
+<rect x="968.5" y="778.5" width="191" height="79" rx="8" class="card"/>
+<text x="984" y="803" class="tm">LLM providers</text>
+<text x="984" y="826" class="d">Anthropic, OpenAI,</text>
+<text x="984" y="845" class="d">and OpenRouter</text>
+<rect x="968.5" y="344.5" width="191" height="111" rx="8" class="card"/>
+<text x="984" y="369" class="tm">Runtime servers</text>
+<text x="984" y="392" class="d">Added in the UI,</text>
+<text x="984" y="411" class="d">session only</text>
+<text x="984" y="434" class="lbl">Browser direct</text>
+<text x="984" y="450" class="lbl">or opt-in proxy</text>
+<path d="M696 226 L696 258 Q696 268 686 268 L268 268 Q258 268 258 278 L258 290" class="wa" marker-end="url(#aha)"/>
+<text x="477" y="260" class="lbla" text-anchor="middle">generates the server package</text>
+<path d="M840 226 L840 338" class="wa" marker-end="url(#aha)"/>
+<text x="850" y="260" class="lbla">adds entry</text>
+<path d="M612 408 L612 438" class="w" marker-end="url(#ah)"/>
+<text x="622" y="428" class="lbl">reads</text>
+<path d="M898 374 L928 374 Q938 374 938 384 L938 590 Q938 600 928 600 L902 600" class="w" marker-end="url(#ah)"/>
+<path d="M570 500 L482 500" class="w" marker-end="url(#ah)"/>
+<text x="524" y="491" class="lbl" text-anchor="middle">stdio, HTTP</text>
+<path d="M570 738 L482 738" class="w" marker-end="url(#ah)"/>
+<text x="524" y="729" class="lbl" text-anchor="middle">HTTP</text>
+<path d="M570 818 L532 818 Q524 818 524 810 L524 738" class="w"/>
+<circle cx="524" cy="738" r="3.5" class="dot"/>
+<path d="M898 818 L962 818" class="w" marker-end="url(#ah)"/>
+<path d="M898 778 L942 778 Q952 778 952 768 L952 369 Q952 364 957 364 L962 364" class="w wd" marker-end="url(#ah)"/>
+</svg>

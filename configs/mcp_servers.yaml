@@ -1,0 +1,48 @@
+# MCP server registry. Read by both the CLI (scripts/mcp_cli.py) and the Frontend (frontend/src/lib/mcp/registry.ts).
+#
+# Common fields:
+#   description     English text (default). The CLI and the UI fall back to it.
+#   description_ko  (optional) Korean text. The Frontend exposes it as descriptionKo and shows it
+#                   when the UI language is Korean. The CLI ignores it.
+#
+# streamable_http entry fields:
+#   url          Address reachable from the host. Used by the CLI and by server-side calls of a local `npm run dev`.
+#   internalUrl  (optional) Container network address. Used when the Frontend container runs with MCP_USE_INTERNAL_URL=true.
+#                The CLI does not read this field.
+#   headers      (optional) Request headers. ${VAR} in values is replaced from the environment, and MCP_API_KEY is
+#                added as X-MCP-API-Key when that header is absent.
+# Browsers never use these addresses directly; they go through the Frontend proxy (/api/mcp/<name>).
+
+servers:
+  - name: starter-mcp
+    transport: stdio
+    command: ["uv", "run", "python", "-m", "starter_mcp.server"]
+    description: "Canonical starter (4 tools, 4 resources, 2 prompts). stdio, learning step 1"
+    description_ko: "캐노니컬 스타터 (도구 4종, 리소스 4종, 프롬프트 2종). stdio, 학습 1단계"
+
+  - name: starter-mcp-http
+    transport: streamable_http
+    url: http://localhost:8001/mcp
+    internalUrl: http://starter-mcp:8001/mcp
+    description: "Streamable HTTP variant of starter-mcp (tools, resources, prompts). Primary target for Inspector and Chat"
+    description_ko: "starter-mcp 의 Streamable HTTP 변형 (도구, 리소스, 프롬프트). Inspector, Chat 1차 표적"
+
+  - name: mock-repo-mcp
+    transport: streamable_http
+    url: http://localhost:8002/mcp
+    internalUrl: http://mock-repo-mcp:8002/mcp
+    description: "Baseline with a mock backend, for Inspector and Chat demos"
+    description_ko: "Mock 백엔드를 가진 baseline. Inspector, Chat 시연용"
+
+  - name: nl2sql-mcp
+    transport: stdio
+    command: ["uv", "run", "python", "-m", "nl2sql_mcp.server", "--transport", "stdio"]
+    description: "NL2SQL MCP (PostgreSQL by default, Oracle optional, Mock sample rows unless NL2SQL_DB_BACKEND=real), stdio for IDE integration"
+    description_ko: "NL2SQL MCP (PostgreSQL 기본, Oracle 선택, NL2SQL_DB_BACKEND=real 이 아니면 Mock 표본 행), stdio IDE 통합용"
+
+  - name: nl2sql-mcp-http
+    transport: streamable_http
+    url: http://localhost:8004/mcp
+    internalUrl: http://nl2sql-mcp:8004/mcp
+    description: "NL2SQL MCP (PostgreSQL by default, Oracle optional, Mock sample rows unless NL2SQL_DB_BACKEND=real), Streamable HTTP for Inspector and Chat demos"
+    description_ko: "NL2SQL MCP (PostgreSQL 기본, Oracle 선택, NL2SQL_DB_BACKEND=real 이 아니면 Mock 표본 행), Streamable HTTP Inspector, Chat 시연용"

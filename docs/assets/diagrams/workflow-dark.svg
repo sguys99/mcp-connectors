@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">Adding a server</title>
+<desc id="desc">Five steps: 1 write the spec with /mcp-spec-writer, 2 implement with /mcp-server-builder (server package, tests, scenario YAML, registry entry, Makefile targets), 3 run make test-&lt;name&gt; and mcp_cli.py test, 4 call one tool with mcp_cli.py call, 5 check it in Inspector and Chat. Inspector History can be exported as scenario YAML and replayed with mcp_cli.py test.</desc>
+<style>
+.bg{fill:#0d1314;stroke:#21292c}
+.zone{fill:#131a1b;stroke:#21292c}
+.card{fill:#192123;stroke:#2b3537}
+.card-accent{fill:#03343c;stroke:#13808a}
+.chip{fill:#21292c}
+.chip-accent{fill:#192123;stroke:#13808a}
+.rule{stroke:#2b3537}
+text{font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;fill:#f8fbfb}
+.mono{font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace}
+.h1{font-size:24px;font-weight:600;letter-spacing:-0.015em}
+.sub{font-size:15px;fill:#9ba7aa}
+.caps{font-size:12px;font-weight:600;letter-spacing:0.08em;fill:#9ba7aa}
+.t{font-size:17px;font-weight:600}
+.tm{font-size:15.5px;font-weight:600}
+.d{font-size:14px;fill:#9ba7aa}
+.dm{font-size:13.5px;fill:#f8fbfb}
+.dmm{font-size:13.5px;fill:#9ba7aa}
+.c{font-size:13px;fill:#c3cccf}
+.ca{font-size:13px;fill:#55dae1}
+.lbl{font-size:12.5px;fill:#9ba7aa}
+.lbla{font-size:12.5px;fill:#55dae1;font-weight:500}
+.accent{fill:#55dae1}
+.badge{fill:#37d6dd}
+.badge-t{fill:#070c0e;font-size:14px;font-weight:700}
+.w{fill:none;stroke:#6a777a;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.wa{fill:none;stroke:#37d6dd;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.wd{stroke-dasharray:5 5}
+.dot{fill:#6a777a}
+.ph{fill:none;stroke:#6a777a;stroke-dasharray:4 4}
+.chip-dash{fill:none;stroke:#6a777a;stroke-dasharray:3 3}
+.muted{fill:#9ba7aa}
+.path{fill:#c3cccf}
+.phase{stroke:#2b3537}
+.phase-a{stroke:#13808a}
+.ah{fill:none;stroke:#6a777a;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.aha{fill:none;stroke:#37d6dd;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<defs>
+<marker id="ah" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="ah" d="M4.5 2.5 L10.5 6 L4.5 9.5"/></marker>
+<marker id="aha" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="aha" d="M4.5 2.5 L10.5 6 L4.5 9.5"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="1199" height="559" rx="14" class="bg"/>
+<text x="40" y="58" class="h1">Adding a server</text>
+<text x="40" y="84" class="sub">From a spec to a server that passes its tests and works in the CLI, Inspector, and Chat.</text>
+<text x="42" y="132" class="caps accent">AUTHOR WITH CLAUDE CODE SKILLS</text><line x1="40" y1="146.5" x2="524.0" y2="146.5" class="phase-a"/>
+<text x="558" y="132" class="caps">VERIFY LOCALLY</text><line x1="556.0" y1="146.5" x2="1160.0" y2="146.5" class="phase"/>
+<rect x="40.5" y="168.5" width="189" height="295" rx="8" class="card"/>
+<circle cx="70" cy="200" r="13" class="badge"/>
+<text x="70" y="205" class="badge-t" text-anchor="middle">1</text>
+<text x="92" y="206" class="t">Spec</text>
+<text x="58" y="236" class="d">Describe the system</text>
+<rect x="58.5" y="252.5" width="144" height="23" rx="4" class="chip-accent"/><text x="130.5" y="268.5" class="ca mono" text-anchor="middle">/mcp-spec-writer</text>
+<line x1="58" y1="296.5" x2="212" y2="296.5" class="rule"/>
+<text x="58" y="324" class="caps">WRITES</text>
+<text x="58" y="350" class="dm mono path">docs/mcp-spec/</text>
+<text x="58" y="372" class="dm mono path">&lt;name&gt;_v0.X.md</text>
+<text x="58" y="404" class="d">10 sections from</text>
+<text x="58" y="426" class="d">a short interview</text>
+<rect x="262.5" y="168.5" width="261" height="295" rx="8" class="card"/>
+<circle cx="292.0" cy="200" r="13" class="badge"/>
+<text x="292" y="205" class="badge-t" text-anchor="middle">2</text>
+<text x="314" y="206" class="t">Implement</text>
+<text x="280" y="236" class="d">Generate the server</text>
+<rect x="280.5" y="252.5" width="168" height="23" rx="4" class="chip-accent"/><text x="364.5" y="268.5" class="ca mono" text-anchor="middle">/mcp-server-builder</text>
+<line x1="280.0" y1="296.5" x2="506.0" y2="296.5" class="rule"/>
+<text x="280" y="324" class="caps">WRITES</text>
+<text x="280" y="350" class="dm mono path">src/mcp-servers/&lt;name&gt;/</text>
+<text x="280" y="372" class="dm mono path">tests/&lt;name&gt;/</text>
+<text x="280" y="394" class="dm mono path">tests/scenarios/&lt;name&gt;.yaml</text>
+<text x="280" y="416" class="dm mono path">configs/mcp_servers.yaml</text>
+<text x="280" y="438" class="d">Makefile targets</text>
+<rect x="556.5" y="168.5" width="183" height="295" rx="8" class="card"/>
+<circle cx="586.0" cy="200" r="13" class="badge"/>
+<text x="586" y="205" class="badge-t" text-anchor="middle">3</text>
+<text x="608" y="206" class="t">Test</text>
+<text x="574" y="236" class="d">Run the regression</text>
+<rect x="574" y="252" width="145" height="24" rx="4" class="chip"/><text x="646.5" y="268.5" class="c mono" text-anchor="middle">make test-&lt;name&gt;</text>
+<line x1="574.0" y1="296.5" x2="722.0" y2="296.5" class="rule"/>
+<text x="574" y="324" class="caps">RUNS</text>
+<text x="574" y="350" class="d">pytest on</text>
+<text x="574" y="372" class="dm mono path">tests/&lt;name&gt;/</text>
+<text x="574" y="404" class="dm mono path">mcp_cli.py test</text>
+<text x="574" y="426" class="d">on scenario YAML</text>
+<rect x="772.5" y="168.5" width="169" height="295" rx="8" class="card"/>
+<circle cx="802.0" cy="200" r="13" class="badge"/>
+<text x="802" y="205" class="badge-t" text-anchor="middle">4</text>
+<text x="824" y="206" class="t">CLI check</text>
+<text x="790" y="236" class="d">Call one tool</text>
+<rect x="790" y="252" width="137" height="24" rx="4" class="chip"/><text x="858.5" y="268.5" class="c mono" text-anchor="middle">mcp_cli.py call</text>
+<line x1="790.0" y1="296.5" x2="924.0" y2="296.5" class="rule"/>
+<text x="790" y="324" class="caps">CHECKS</text>
+<text x="790" y="350" class="dm mono path">--server --tool</text>
+<text x="790" y="372" class="dm mono path">--params</text>
+<text x="790" y="404" class="d">Over stdio or HTTP</text>
+<rect x="974.5" y="168.5" width="185" height="295" rx="8" class="card"/>
+<circle cx="1004.0" cy="200" r="13" class="badge"/>
+<text x="1004" y="205" class="badge-t" text-anchor="middle">5</text>
+<text x="1026" y="206" class="t">Visual check</text>
+<text x="992" y="236" class="d">See it in the UI</text>
+<rect x="992" y="252" width="153" height="24" rx="4" class="chip"/><text x="1068.5" y="268.5" class="c mono" text-anchor="middle">make frontend-dev</text>
+<line x1="992.0" y1="296.5" x2="1142.0" y2="296.5" class="rule"/>
+<text x="992" y="324" class="caps">CHECKS</text>
+<text x="992" y="350" class="tm">Inspector</text>
+<text x="992" y="372" class="d">Tools, resources,</text>
+<text x="992" y="394" class="d">and prompts</text>
+<text x="992" y="426" class="tm">Chat</text>
+<text x="992" y="448" class="d">LLM tool-use loop</text>
+<path d="M236 200 L256 200" class="wa" marker-end="url(#aha)"/>
+<path d="M530 200 L550 200" class="wa" marker-end="url(#aha)"/>
+<path d="M746 200 L766 200" class="wa" marker-end="url(#aha)"/>
+<path d="M948 200 L968 200" class="wa" marker-end="url(#aha)"/>
+<path d="M1067 470 L1067 488 Q1067 500 1055 500 L660 500 Q648 500 648 488 L648 470" class="w wd" marker-end="url(#ah)"/>
+<text x="857.5" y="526" class="lbl" text-anchor="middle">Export Inspector History as scenario YAML, then replay it with mcp_cli.py test</text>
+</svg>

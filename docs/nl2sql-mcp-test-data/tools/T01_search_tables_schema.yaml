@@ -1,0 +1,401 @@
+meta:
+  target: search_tables_schema
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+  cli_server: nl2sql-mcp
+
+# 기준 스키마: Pagila (public), 테이블 15개 + 뷰 7개 + 구체화 뷰 1개 = 23개. 식별자는 소문자로 반환된다.
+# 기대 match 수는 Mock 카탈로그(src/mcp-servers/nl2sql_mcp/db/mock_backend.py)를 직접 조회해 맞췄다.
+
+tests:
+  - id: T01-001
+    category: positive
+    call_type: direct
+    title: "CUST% 패턴으로 customer 테이블과 customer_list 뷰 검색"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "CUST%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 2}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["customer", "customer_list"]}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "CUST%", "limit": 20}'
+
+  - id: T01-002
+    category: positive
+    call_type: direct
+    title: "FILM% 패턴으로 영화 관련 복수 테이블 검색"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "FILM%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 4}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["film", "film_actor", "film_category", "film_list"]}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "FILM%", "limit": 20}'
+
+  - id: T01-003
+    category: positive
+    call_type: direct
+    title: "PAY% 패턴으로 payment 테이블 검색"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "PAY%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 1}
+        - {field: "tables[*].table_name", op: "contains_any", value: ["payment"]}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "PAY%", "limit": 20}'
+
+  - id: T01-004
+    category: positive
+    call_type: direct
+    title: "SALES% 패턴으로 매출 집계 뷰 2개 검색"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "SALES%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 2}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["sales_by_film_category", "sales_by_store"]}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "SALES%", "limit": 20}'
+
+  - id: T01-005
+    category: positive
+    call_type: direct
+    title: "STAFF% 패턴으로 직원 관련 테이블과 뷰 검색"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "STAFF%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 2}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["staff", "staff_list"]}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "STAFF%", "limit": 20}'
+
+  - id: T01-006
+    category: positive
+    call_type: direct
+    title: "%INVENT% 패턴으로 재고 테이블 검색"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%INVENT%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 1}
+        - {field: "tables[*].table_name", op: "contains_any", value: ["inventory"]}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%INVENT%", "limit": 20}'
+
+  - id: T01-007
+    category: negative
+    call_type: direct
+    title: "% 와일드카드 + limit=5 → TOO_MANY_TABLES (23 > 5)"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%"
+        limit: 5
+    expected:
+      status: error
+      error_code: "TOO_MANY_TABLES"
+      checks:
+        - {field: "error.code", op: "eq", value: "TOO_MANY_TABLES"}
+        - {field: "error.message", op: "contains", value: "(23)"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%", "limit": 5}'
+
+  - id: T01-008
+    category: negative
+    call_type: direct
+    title: "% 와일드카드 + limit=20 → TOO_MANY_TABLES (23 > 20)"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%"
+        limit: 20
+    expected:
+      status: error
+      error_code: "TOO_MANY_TABLES"
+      checks:
+        - {field: "error.code", op: "eq", value: "TOO_MANY_TABLES"}
+        - {field: "error.message", op: "contains", value: "(23)"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%", "limit": 20}'
+
+  - id: T01-009
+    category: negative
+    call_type: direct
+    title: "존재하지 않는 패턴 → 빈 결과 (에러 아님)"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "NONEXISTENT_XYZ%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 0}
+        - {field: "tables", op: "eq", value: []}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "NONEXISTENT_XYZ%", "limit": 20}'
+
+  - id: T01-010
+    category: negative
+    call_type: direct
+    title: "limit=0 → INVALID_INPUT (허용 범위 1~50)"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%"
+        limit: 0
+    expected:
+      status: error
+      error_code: "INVALID_INPUT"
+      checks:
+        - {field: "error.code", op: "eq", value: "INVALID_INPUT"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%", "limit": 0}'
+
+  - id: T01-011
+    category: negative
+    call_type: direct
+    title: "limit=51 → 최대값(50) 초과로 INVALID_INPUT"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%"
+        limit: 51
+    expected:
+      status: error
+      error_code: "INVALID_INPUT"
+      checks:
+        - {field: "error.code", op: "eq", value: "INVALID_INPUT"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%", "limit": 51}'
+
+  - id: T01-012
+    category: edge
+    call_type: direct
+    title: "대문자 패턴 'CUSTOMER' → 대소문자 비구분으로 소문자 customer 반환"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "CUSTOMER"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 1}
+        - {field: "tables[*].table_name", op: "contains_any", value: ["customer"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "CUSTOMER", "limit": 20}'
+
+  - id: T01-013
+    category: edge
+    call_type: direct
+    title: "%CATEGORY% 패턴 → 소형 코드 마스터 category 와 연결 테이블, 집계 뷰, 구체화 뷰 검색"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%CATEGORY%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 4}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["category", "film_category", "rental_by_category", "sales_by_film_category"]}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%CATEGORY%", "limit": 20}'
+
+  - id: T01-014
+    category: edge
+    call_type: direct
+    title: "%A% 패턴 + limit=50 → 14개 테이블 매칭, truncated 필드 검증"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%A%"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 14}
+        - {field: "truncated", op: "eq", value: false}
+        - {field: "tables", op: "length_lte", value: 50}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%A%", "limit": 50}'
+
+  - id: T01-015
+    category: edge
+    call_type: direct
+    title: "% 패턴 + limit=50 → 전체 23개(테이블 15, 뷰 7, 구체화 뷰 1), truncated=false"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "%"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 23}
+        - {field: "tables", op: "length_eq", value: 23}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "%", "limit": 50}'
+
+  - id: T01-016
+    category: edge
+    call_type: direct
+    title: "FILM_% 패턴 (언더스코어는 한 글자 와일드카드) → film 제외, film_actor 등 반환"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: "FILM_%"
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 3}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["film_actor", "film_category", "film_list"]}
+        - {field: "tables[*].table_name", op: "not_contains", value: "film"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "FILM_%", "limit": 20}'
+
+  - id: T01-017
+    category: edge
+    call_type: direct
+    title: "빈 문자열 패턴 → 에러가 아니라 빈 결과 (현재 구현 동작)"
+    input:
+      tool: search_tables_schema
+      params:
+        pattern: ""
+        limit: 20
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 0}
+        - {field: "tables", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_tables_schema \
+          --params '{"pattern": "", "limit": 20}'
+
+  - id: T01-018
+    category: chat
+    call_type: chat
+    title: "자연어로 고객 관련 테이블 검색 요청"
+    chat_prompt: "고객 관련 테이블이 뭐가 있는지 찾아줘"
+    expected:
+      tool_called: search_tables_schema
+      status: success
+      human_verify: "응답에 customer 테이블(그리고 customer_list 뷰)이 포함되어 있는지 확인. LLM이 pattern='CUST%' 또는 '%CUSTOMER%'를 사용했는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T01-019
+    category: chat
+    call_type: chat
+    title: "자연어로 영화 관련 테이블 검색 요청"
+    chat_prompt: "영화 관련 테이블 알려줘"
+    expected:
+      tool_called: search_tables_schema
+      status: success
+      human_verify: "응답에 film 또는 film_category, film_actor 테이블이 포함되어 있는지 확인. LLM이 적절한 FILM% 패턴을 사용했는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T01-020
+    category: chat
+    call_type: chat
+    title: "자연어로 결제 내역 테이블 검색 요청"
+    chat_prompt: "결제 내역을 저장하는 테이블이 뭐야?"
+    expected:
+      tool_called: search_tables_schema
+      status: success
+      human_verify: "응답에 payment 테이블이 포함되어 있는지 확인. 테이블 설명(comment)이 함께 반환되는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"

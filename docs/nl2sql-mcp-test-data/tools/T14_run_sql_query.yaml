@@ -1,0 +1,429 @@
+meta:
+  target: run_sql_query
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+  cli_server: nl2sql-mcp
+
+# 기준 스키마: Pagila (public). SQL 문법은 기본 dialect(PostgreSQL)를 쓰고 식별자는 Pagila 소문자로 쓴다.
+# 기대값은 Mock 백엔드와 가드레일을 직접 호출해 확인했다. Mock 결과 컬럼명은 소문자다.
+#
+# Guardrail pipeline (순서 고정):
+#   7.1 WRITE_BLOCKED       → DML/DDL 차단
+#   7.5 FORBIDDEN_SQL_BLOCKED → 시스템 테이블, 함수 등 금지 패턴
+#   7.9 RISKY_SQL_BLOCKED   → 위험 패턴 차단
+#   7.6 PII_COLUMN_BLOCKED  → 테이블 인지형 PII 카탈로그의 block 컬럼 입력 단계 차단 (customer.email/first_name/last_name,
+#                             address.phone/address, staff.password 등, 이 컬럼을 펼치는 SELECT * 포함). mask 컬럼은 결과에서 가림
+#   7.7 MASS_SCAN_BLOCKED   → WHERE 없는 조회, 토탈로지 WHERE, 카티시안 조인 차단
+#   7.2 DATE_RANGE_EXCEEDED → 날짜 컬럼(_DATE/_AT/_DT/_TIME) 조건 미지정 시 CURRENT_DATE - INTERVAL 자동 삽입
+#   7.3                     → LIMIT {max_rows} 자동 삽입
+#   7.4 QUERY_TIMEOUT       → 실행 타임아웃
+#   7.6 (output)            → 결과 PII 마스킹
+#   7.8                     → 결과 후처리 (explain 첨부)
+
+tests:
+  - id: T14-001
+    category: positive
+    call_type: direct
+    title: "customer 활성 고객 기본 조회 (customer_id, store_id, active)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, store_id, active FROM customer WHERE active = 1 LIMIT 10"
+    expected:
+      status: success
+      checks:
+        - {field: "columns", op: "contains_all", value: ["customer_id", "store_id", "active"]}
+        - {field: "row_count", op: "gt", value: 0}
+        - {field: "row_count", op: "lte", value: 10}
+        - {field: "truncated", op: "eq", value: false}
+        - {field: "masked_columns", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT customer_id, store_id, active FROM customer WHERE active = 1 LIMIT 10"}'
+
+  - id: T14-002
+    category: positive
+    call_type: direct
+    title: "payment 날짜 조건 포함 결제 내역 조회"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, amount, payment_date FROM payment WHERE payment_date >= DATE '2024-01-01' AND payment_date < DATE '2025-01-01' LIMIT 10"
+    expected:
+      status: success
+      checks:
+        - {field: "columns", op: "contains_all", value: ["rental_id", "amount", "payment_date"]}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "row_count", op: "lte", value: 10}
+        - {field: "explain.estimated_cost", op: "exists", value: true}
+        - {field: "explain.full_scan_tables", op: "not_contains", value: "payment"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT rental_id, amount, payment_date FROM payment WHERE payment_date >= DATE '\''2024-01-01'\'' LIMIT 10"}'
+
+  - id: T14-003
+    category: positive
+    call_type: direct
+    title: "rental 미반납 대여 고객별 집계 (GROUP BY)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, COUNT(*) cnt FROM rental WHERE return_date IS NULL GROUP BY customer_id LIMIT 10"
+    expected:
+      status: success
+      checks:
+        # Mock 의 GROUP BY 합성 결과는 별칭(cnt) 대신 "count(*)" 를 컬럼명으로 돌려주므로 그룹 키만 검사한다.
+        - {field: "columns", op: "contains_all", value: ["customer_id"]}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "row_count", op: "lte", value: 10}
+        - {field: "masked_columns", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT customer_id, COUNT(*) cnt FROM rental WHERE return_date IS NULL GROUP BY customer_id LIMIT 10"}'
+
+  - id: T14-004
+    category: positive
+    call_type: direct
+    title: "film 상품 마스터 조회 (WHERE 조건 포함, 7.7 은 WHERE 없는 조회를 차단)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id, title, rating FROM film WHERE language_id = 1 LIMIT 15"
+    expected:
+      status: success
+      checks:
+        - {field: "columns", op: "contains_all", value: ["film_id", "title", "rating"]}
+        - {field: "row_count", op: "lte", value: 15}
+        - {field: "row_count", op: "gt", value: 0}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT film_id, title, rating FROM film WHERE language_id = 1 LIMIT 15"}'
+
+  - id: T14-005
+    category: positive
+    call_type: direct
+    title: "payment 기간 조건 결제 금액 조회"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT payment_id, amount, rental_id FROM payment WHERE payment_date >= DATE '2024-01-01' AND payment_date < DATE '2025-01-01' LIMIT 10"
+    expected:
+      status: success
+      checks:
+        - {field: "columns", op: "contains_all", value: ["payment_id", "amount", "rental_id"]}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "row_count", op: "lte", value: 10}
+        - {field: "masked_columns", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT payment_id, amount, rental_id FROM payment WHERE payment_date >= DATE '\''2024-01-01'\'' LIMIT 10"}'
+
+  - id: T14-006
+    category: positive
+    call_type: direct
+    title: "CTE (WITH 절) 포함 쿼리 실행 (바깥 SELECT 도 컬럼 명시)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "WITH cte AS (SELECT customer_id, return_date FROM rental WHERE return_date IS NULL) SELECT customer_id, return_date FROM cte LIMIT 5"
+    expected:
+      status: success
+      checks:
+        - {field: "columns", op: "contains_all", value: ["customer_id", "return_date"]}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "row_count", op: "lte", value: 5}
+        - {field: "explain", op: "exists", value: true}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "WITH cte AS (SELECT customer_id, return_date FROM rental WHERE return_date IS NULL) SELECT customer_id, return_date FROM cte LIMIT 5"}'
+
+  - id: T14-007
+    category: negative
+    call_type: direct
+    title: "DELETE 문 실행 시 WRITE_BLOCKED (가드 7.1)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "DELETE FROM customer WHERE customer_id = 1"
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+      checks:
+        - {field: "error.code", op: "eq", value: "WRITE_BLOCKED"}
+        - {field: "error.message", op: "contains_any", value: ["Delete", "SELECT or WITH"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "DELETE FROM customer WHERE customer_id = 1"}'
+
+  - id: T14-008
+    category: negative
+    call_type: direct
+    title: "INSERT 문 실행 시 WRITE_BLOCKED (가드 7.1)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "INSERT INTO customer (customer_id, store_id) VALUES (9999, 1)"
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+      checks:
+        - {field: "error.code", op: "eq", value: "WRITE_BLOCKED"}
+        - {field: "error.message", op: "contains_any", value: ["Insert", "SELECT or WITH"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "INSERT INTO customer (customer_id, store_id) VALUES (9999, 1)"}'
+
+  - id: T14-009
+    category: negative
+    call_type: direct
+    title: "PII 컬럼 email 직접 SELECT → PII_COLUMN_BLOCKED (가드 7.6)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT email FROM customer WHERE active = 1 LIMIT 5"
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks:
+        - {field: "error.code", op: "eq", value: "PII_COLUMN_BLOCKED"}
+        - {field: "error.message", op: "contains_any", value: ["EMAIL", "PII"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT email FROM customer WHERE active = 1 LIMIT 5"}'
+
+  - id: T14-010
+    category: negative
+    call_type: direct
+    title: "PII 컬럼 phone 직접 SELECT (address 테이블) → PII_COLUMN_BLOCKED (가드 7.6)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT phone FROM address WHERE city_id = 300 LIMIT 5"
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks:
+        - {field: "error.code", op: "eq", value: "PII_COLUMN_BLOCKED"}
+        - {field: "error.message", op: "contains_any", value: ["PHONE", "PII"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT phone FROM address WHERE city_id = 300 LIMIT 5"}'
+
+  - id: T14-011
+    category: negative
+    call_type: direct
+    title: "WHERE 절 없는 전수 스캔 → MASS_SCAN_BLOCKED (가드 7.7)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, customer_id FROM rental"
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks:
+        - {field: "error.code", op: "eq", value: "MASS_SCAN_BLOCKED"}
+        - {field: "error.message", op: "contains_any", value: ["WHERE", "without a WHERE"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT rental_id, customer_id FROM rental"}'
+
+  - id: T14-012
+    category: negative
+    call_type: direct
+    title: "WHERE 1=1 토탈로지 → MASS_SCAN_BLOCKED (가드 7.7)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, store_id FROM customer WHERE 1=1 LIMIT 10"
+    expected:
+      status: error
+      error_code: "MASS_SCAN_BLOCKED"
+      checks:
+        - {field: "error.code", op: "eq", value: "MASS_SCAN_BLOCKED"}
+        - {field: "error.message", op: "contains_any", value: ["1=1", "Full-scan"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT customer_id, store_id FROM customer WHERE 1=1 LIMIT 10"}'
+
+  - id: T14-013
+    category: edge
+    call_type: direct
+    title: "콤마 조인(암시적 JOIN) + WHERE 조인 조건 포함 쿼리 정상 실행"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, p.amount FROM payment p, customer c WHERE c.customer_id = p.customer_id AND p.payment_date >= DATE '2024-01-01' AND p.payment_date < DATE '2025-01-01' LIMIT 10"
+    expected:
+      status: success
+      checks:
+        - {field: "columns", op: "contains_all", value: ["customer_id", "amount"]}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "row_count", op: "lte", value: 10}
+        - {field: "explain.full_scan_tables", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT c.customer_id, p.amount FROM payment p, customer c WHERE c.customer_id = p.customer_id AND p.payment_date >= DATE '\''2024-01-01'\'' LIMIT 10"}'
+
+  - id: T14-014
+    category: edge
+    call_type: direct
+    title: "LIMIT FIRST 미포함 쿼리 → max_rows 자동 주입 검증 (가드 7.3)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, store_id FROM customer WHERE active = 1"
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 1000}
+        - {field: "human_verify", op: "note", value: "실행된 SQL에 'LIMIT 1000'가 자동 주입되었는지 서버 로그 또는 explain 필드에서 확인"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT customer_id, store_id FROM customer WHERE active = 1"}'
+
+  - id: T14-015
+    category: edge
+    call_type: direct
+    title: "날짜 조건 없는 payment 조회 → 기간 조건 자동 삽입 (가드 7.2)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT payment_id, payment_date FROM payment WHERE rental_id IS NOT NULL"
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 1000}
+        - {field: "human_verify", op: "note", value: "날짜 조건이 없어 PAYMENT_DATE >= CURRENT_DATE - INTERVAL '3 months' 조건이 자동 삽입됐는지 서버 로그 또는 explain 필드에서 확인"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT payment_id, payment_date FROM payment WHERE rental_id IS NOT NULL"}'
+
+  - id: T14-016
+    category: edge
+    call_type: direct
+    title: "max_rows=10000 (허용 최대값) 설정 후 조회"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, store_id, active FROM customer WHERE active = 1 LIMIT 100"
+        max_rows: 10000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 100}
+        - {field: "truncated", op: "eq", value: false}
+        - {field: "human_verify", op: "note", value: "max_rows=10000이 정상 수용되고 LIMIT 100 결과가 반환되는지 확인"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT customer_id, store_id, active FROM customer WHERE active = 1 LIMIT 100", "max_rows": 10000}'
+
+  - id: T14-017
+    category: edge
+    call_type: direct
+    title: "max_rows=99999 (최대값 초과) → 10000으로 자동 클램핑 후 정상 실행"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, store_id, active FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 99999
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 10000}
+        - {field: "human_verify", op: "note", value: "max_rows=99999이 10000으로 클램핑되어 정상 실행되는지 확인. INVALID_INPUT 에러 없이 성공해야 함"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT customer_id, store_id, active FROM customer WHERE active = 1 LIMIT 10", "max_rows": 99999}'
+
+  - id: T14-018
+    category: edge
+    call_type: direct
+    title: "store 소형 테이블(2행) 전체 조회 (WHERE 조건 포함)"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT store_id, manager_staff_id, address_id FROM store WHERE store_id IN (1, 2) LIMIT 6"
+    expected:
+      status: success
+      checks:
+        - {field: "columns", op: "contains_all", value: ["store_id", "manager_staff_id", "address_id"]}
+        - {field: "row_count", op: "lte", value: 2}
+        - {field: "row_count", op: "gt", value: 0}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params '{"sql": "SELECT store_id, manager_staff_id, address_id FROM store WHERE store_id IN (1, 2) LIMIT 6"}'
+
+  - id: T14-019
+    category: chat
+    call_type: chat
+    title: "지난달 영화 대여 건수 고객별 집계 자연어 요청"
+    chat_prompt: "지난달 영화 대여 건수를 고객별로 보여줘"
+    expected:
+      tool_called: run_sql_query
+      status: success
+      checks:
+        - {field: "tool_input.sql", op: "contains_any", value: ["rental", "GROUP BY"]}
+        - {field: "tool_input.sql", op: "contains_any", value: ["COUNT", "CNT"]}
+        - {field: "tool_input.sql", op: "contains_any", value: ["rental_date", "CURRENT_DATE", "INTERVAL"]}
+        - {field: "result.row_count", op: "gte", value: 0}
+      human_verify: "생성된 SQL에 지난달 날짜 조건(rental_date 범위)과 customer_id GROUP BY가 포함되어 있는지 확인. 결과 테이블에 고객별 대여 건수가 출력되어야 함"
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T14-020
+    category: chat
+    call_type: chat
+    title: "현재 활성 고객 수 조회 자연어 요청"
+    chat_prompt: "현재 활성 고객 수를 알려줘"
+    expected:
+      tool_called: run_sql_query
+      status: success
+      checks:
+        - {field: "tool_input.sql", op: "contains", value: "customer"}
+        - {field: "tool_input.sql", op: "contains_any", value: ["COUNT(*)", "COUNT(customer_id)"]}
+        - {field: "tool_input.sql", op: "contains", value: "active"}
+        - {field: "result.row_count", op: "eq", value: 1}
+      human_verify: "생성된 SQL이 SELECT COUNT(*) FROM customer WHERE active = 1 형태이고, 결과가 단일 행(활성 고객 수 숫자)으로 반환되는지 확인. Mock 은 자동 주입된 LIMIT 1000 의 N을 집계값으로 돌려주므로 숫자 자체는 실 DB 에서 확인"
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"

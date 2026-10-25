@@ -1,0 +1,422 @@
+meta:
+  target: guardrail_74
+  guardrail_name: enforce_timeout
+  error_code: QUERY_TIMEOUT
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+
+tests:
+  - id: G74-001
+    category: pass
+    call_type: direct
+    title: "소형 테이블 단순 SELECT, 30초 이내 완료"
+    description: "film 테이블(1,000행)에서 film_id만 조회. 쿼리 실행 시간이 timeout(30s)보다 훨씬 짧아 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id FROM film LIMIT 5"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT film_id FROM film LIMIT 5\", \"max_rows\": 10}"
+
+  - id: G74-002
+    category: pass
+    call_type: direct
+    title: "payment COUNT 집계, 30초 이내 완료"
+    description: "payment 테이블에서 날짜 조건부 COUNT 집계. 인덱스(payment_date) 활용 시 빠르게 완료되어 success 반환되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'\", \"max_rows\": 10}"
+
+  - id: G74-003
+    category: pass
+    call_type: direct
+    title: "customer active 필터 조회, 30초 이내 완료"
+    description: "customer 테이블에서 active = 1 필터로 customer_id, active를 10행 조회. 인덱스 활용으로 빠르게 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, active FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, active FROM customer WHERE active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G74-004
+    category: pass
+    call_type: direct
+    title: "rental 날짜 조건 조회, 30초 이내 완료"
+    description: "rental 테이블(16,044행)에서 rental_date 날짜 조건부 조회. LIMIT 6으로 결과가 작아 즉시 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, customer_id FROM rental WHERE rental_date >= DATE '2025-01-01' AND rental_date < DATE '2026-01-01' LIMIT 6"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, customer_id FROM rental WHERE rental_date >= DATE '2025-01-01' AND rental_date < DATE '2026-01-01' LIMIT 6\", \"max_rows\": 10}"
+
+  - id: G74-005
+    category: pass
+    call_type: direct
+    title: "payment GROUP BY 집계, 30초 이내 완료"
+    description: "payment에서 고객(customer_id)별 COUNT 집계. LIMIT FIRST로 결과 제한되어 timeout 없이 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, COUNT(*) CNT FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY customer_id LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, COUNT(*) CNT FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY customer_id LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G74-006
+    category: pass
+    call_type: direct
+    title: "customer-payment JOIN 조회, 30초 이내 완료"
+    description: "customer와 payment를 customer_id로 JOIN하여 10행 조회. LIMIT FIRST로 결과 제한되어 timeout 없이 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, p.amount FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, p.amount FROM customer c JOIN payment p ON c.customer_id = p.customer_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G74-007
+    category: pass
+    call_type: direct
+    title: "film language_id 필터 조회, 30초 이내 완료"
+    description: "film(1,000행)에서 language_id = 1 필터 조회. 작은 테이블이라 즉시 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT film_id, rating, language_id FROM film WHERE language_id = 1 LIMIT 15"
+        max_rows: 15
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT film_id, rating, language_id FROM film WHERE language_id = 1 LIMIT 15\", \"max_rows\": 15}"
+
+  - id: G74-008
+    category: pass
+    call_type: direct
+    title: "payment 직원별 날짜 조건 조회, 30초 이내 완료"
+    description: "payment에서 payment_date 날짜 조건과 staff_id 조건으로 조회. 인덱스 활용으로 빠르게 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, amount FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' AND staff_id = 2 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, amount FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' AND staff_id = 2 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G74-009
+    category: pass
+    call_type: direct
+    title: "customer DISTINCT active 조회, 30초 이내 완료"
+    description: "customer에서 중복 제거된 active 값 목록 조회. DISTINCT이지만 소수의 고유값만 존재해 빠르게 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT DISTINCT active FROM customer WHERE active IS NOT NULL"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT DISTINCT active FROM customer WHERE active IS NOT NULL\", \"max_rows\": 10}"
+
+  - id: G74-010
+    category: pass
+    call_type: direct
+    title: "payment 날짜 조건 조회, 30초 이내 완료"
+    description: "payment에서 payment_date 날짜 조건부 조회. 인덱스 활용으로 timeout 없이 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT payment_id, amount, staff_id FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT payment_id, amount, staff_id FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G74-011
+    category: pass
+    call_type: direct
+    title: "customer 단순 COUNT, 30초 이내 완료"
+    description: "customer에서 active = 1 필터 COUNT. 단순 집계로 빠르게 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM customer WHERE active = 1"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM customer WHERE active = 1\", \"max_rows\": 10}"
+
+  - id: G74-012
+    category: pass
+    call_type: direct
+    title: "rental 반납일 조건 조회, 30초 이내 완료"
+    description: "rental에서 return_date 날짜 조건부 조회. 인덱스 활용으로 빠르게 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, inventory_id FROM rental WHERE return_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, inventory_id FROM rental WHERE return_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G74-013
+    category: block
+    call_type: direct
+    title: "timeout_sec=1 환경에서 복잡한 집계 쿼리 QUERY_TIMEOUT 발생"
+    description: "주의: 이 케이스는 서버 환경변수 GUARDRAIL_TIMEOUT_SEC=1 설정이 필요함(Mock 백엔드면 NL2SQL_MOCK_DELAY_SEC=2 도 함께, 러너는 env 키로 넘김). timeout_sec=1 환경에서 복잡한 다중 조인 집계 쿼리 실행 시 1초 이내에 완료되지 못해 QUERY_TIMEOUT 발생을 확인. 정상 환경(30s)에서는 success 반환됨"
+    requires:
+      backend: mock
+      reason: "타임아웃을 Mock 지연(NL2SQL_MOCK_DELAY_SEC)으로 재현함. 실 Pagila 는 1초 안에 끝나고 GUARDRAIL_TIMEOUT_SEC 는 1초 미만을 줄 수 없음"
+    env:
+      GUARDRAIL_TIMEOUT_SEC: "1"
+      NL2SQL_MOCK_DELAY_SEC: "2"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, COUNT(p.payment_id) AS pay_cnt, SUM(p.amount) AS total FROM customer c JOIN rental r ON c.customer_id = r.customer_id JOIN payment p ON r.rental_id = p.rental_id WHERE p.payment_date >= DATE '2025-01-01' AND p.payment_date < DATE '2026-01-01' GROUP BY c.customer_id ORDER BY total DESC LIMIT 100"
+        max_rows: 100
+    expected:
+      status: error
+      error_code: "QUERY_TIMEOUT"
+      checks: []
+    execution:
+      command: |
+        GUARDRAIL_TIMEOUT_SEC=1 NL2SQL_MOCK_DELAY_SEC=2 python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, COUNT(p.payment_id) AS pay_cnt, SUM(p.amount) AS total FROM customer c JOIN rental r ON c.customer_id = r.customer_id JOIN payment p ON r.rental_id = p.rental_id WHERE p.payment_date >= DATE '2025-01-01' AND p.payment_date < DATE '2026-01-01' GROUP BY c.customer_id ORDER BY total DESC LIMIT 100\", \"max_rows\": 100}"
+
+  - id: G74-014
+    category: block
+    call_type: direct
+    title: "timeout_sec=1 환경에서 3중 JOIN 쿼리 QUERY_TIMEOUT 발생"
+    description: "주의: 이 케이스는 서버 환경변수 GUARDRAIL_TIMEOUT_SEC=1 설정이 필요함(Mock 백엔드면 NL2SQL_MOCK_DELAY_SEC=2 도 함께, 러너는 env 키로 넘김). payment, rental, customer 3중 조인 + 날짜 범위 1년치 스캔. Pagila 규모(payment 14,596행)에서는 1초 안에 끝날 수 있어 지연 주입이나 대용량 데이터가 있어야 QUERY_TIMEOUT 발생 예상"
+    requires:
+      backend: mock
+      reason: "타임아웃을 Mock 지연(NL2SQL_MOCK_DELAY_SEC)으로 재현함. 실 Pagila 는 1초 안에 끝나고 GUARDRAIL_TIMEOUT_SEC 는 1초 미만을 줄 수 없음"
+    env:
+      GUARDRAIL_TIMEOUT_SEC: "1"
+      NL2SQL_MOCK_DELAY_SEC: "2"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM payment p JOIN rental r ON p.rental_id = r.rental_id JOIN customer c ON c.customer_id = r.customer_id WHERE p.payment_date >= DATE '2025-01-01' AND p.payment_date < DATE '2026-01-01'"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "QUERY_TIMEOUT"
+      checks: []
+    execution:
+      command: |
+        GUARDRAIL_TIMEOUT_SEC=1 NL2SQL_MOCK_DELAY_SEC=2 python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM payment p JOIN rental r ON p.rental_id = r.rental_id JOIN customer c ON c.customer_id = r.customer_id WHERE p.payment_date >= DATE '2025-01-01' AND p.payment_date < DATE '2026-01-01'\", \"max_rows\": 10}"
+
+  - id: G74-015
+    category: edge
+    call_type: direct
+    title: "customer 1000행 조회, 30초 이내 완료"
+    description: "max_rows=1000으로 customer를 대량 조회하더라도 30초 timeout 내에 완료되어야 함. LIMIT 1000로 결과 제한"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id FROM customer WHERE active = 1 AND customer_id IS NOT NULL LIMIT 1000"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id FROM customer WHERE active = 1 AND customer_id IS NOT NULL LIMIT 1000\", \"max_rows\": 1000}"
+
+  - id: G74-016
+    category: edge
+    call_type: direct
+    title: "payment 집계 + ORDER BY, 30초 이내 완료"
+    description: "SUM 집계 + ORDER BY DESC 정렬을 포함한 쿼리. LIMIT 20로 결과 제한되어 30초 내 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT p.customer_id, SUM(p.amount) AS total FROM payment p WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY p.customer_id ORDER BY total DESC LIMIT 20"
+        max_rows: 20
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT p.customer_id, SUM(p.amount) AS total FROM payment p WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY p.customer_id ORDER BY total DESC LIMIT 20\", \"max_rows\": 20}"
+
+  - id: G74-017
+    category: edge
+    call_type: direct
+    title: "film SELECT *, 소형 테이블 30초 이내 완료"
+    description: "SELECT * 사용이지만 film(1,000행)으로 작은 테이블. timeout에 걸리지 않고 success 반환되어야 함. PII 컬럼 없으므로 G76 차단도 없음. (P2-6) film 은 GUARDRAIL_MASS_SCAN_ROW_THRESHOLD(기본 10000) 이하라 WHERE 없이도 7.7 을 통과함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT * FROM film LIMIT 15"
+        max_rows: 15
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT * FROM film LIMIT 15\", \"max_rows\": 15}"
+
+  - id: G74-018
+    category: edge
+    call_type: direct
+    title: "rental 100행 조회, 30초 이내 완료"
+    description: "rental 테이블에서 rental_date 날짜 조건 + LIMIT 100 조회. 30초 timeout 내 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT rental_id, customer_id, return_date FROM rental WHERE rental_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 100"
+        max_rows: 100
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT rental_id, customer_id, return_date FROM rental WHERE rental_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 100\", \"max_rows\": 100}"
+
+  - id: G74-019
+    category: edge
+    call_type: direct
+    title: "3중 JOIN 다중 테이블 조회, PII 차단 우선 확인"
+    description: "customer, rental, payment 3중 JOIN. email은 PII 컬럼이므로 G74(timeout) 전에 G76(PII_COLUMN_BLOCKED)이 먼저 차단할 것으로 예상됨. 가드레일 우선순위 검증 목적"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT c.customer_id, c.email, p.amount FROM customer c JOIN rental r ON c.customer_id = r.customer_id JOIN payment p ON r.rental_id = p.rental_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '3 months' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "PII_COLUMN_BLOCKED"
+      checks: []
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT c.customer_id, c.email, p.amount FROM customer c JOIN rental r ON c.customer_id = r.customer_id JOIN payment p ON r.rental_id = p.rental_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '3 months' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G74-020
+    category: edge
+    call_type: direct
+    title: "customer create_date 날짜 조건 조회, 30초 이내 완료"
+    description: "payment_date가 아닌 create_date 날짜 컬럼 조건 사용. 다른 날짜 컬럼 인덱스 유무와 무관하게 30초 timeout 내 완료되어야 함"
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, active FROM customer WHERE create_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 50"
+        max_rows: 50
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, active FROM customer WHERE create_date >= CURRENT_DATE - INTERVAL '6 months' LIMIT 50\", \"max_rows\": 50}"

@@ -1,0 +1,89 @@
+{
+  "skill_name": "mcp-server-builder",
+  "notes": "Run each eval against a scratch copy of the repo (pyproject.toml, Makefile, configs/, scripts/, src/mcp-servers/_common, docs/scenario-format.md), never the real src/. Shared assertions apply to every eval that generates code. Results: docs/revamp/skill-evals.md.",
+  "shared_assertions": [
+    {"name": "package_layout", "type": "files_exist", "values": ["src/mcp-servers/<snake>/__init__.py", "src/mcp-servers/<snake>/server.py", "src/mcp-servers/<snake>/state.py", "src/mcp-servers/<snake>/client.py", "src/mcp-servers/<snake>/config.py", "src/mcp-servers/<snake>/.env.example", "src/mcp-servers/<snake>/README.md", "tests/<snake>/conftest.py", "tests/<snake>/test_mcp_contract.py", "tests/scenarios/<kebab>.yaml"]},
+    {"name": "no_tests_init", "type": "file_absent", "value": "tests/<snake>/__init__.py"},
+    {"name": "common_untouched", "type": "unchanged", "value": "src/mcp-servers/_common/"},
+    {"name": "common_import_style", "type": "grep_absent", "pattern": "mcp_servers\\._common|import mcp_servers", "path": "src/mcp-servers/<snake>/"},
+    {"name": "no_decorator_cycle", "type": "grep_absent", "pattern": "from <snake>\\.server import|noqa: E402", "path": "src/mcp-servers/<snake>/"},
+    {"name": "http_middleware_wired", "type": "grep", "pattern": "build_http_middleware\\(settings\\.mcp_api_key\\)", "path": "src/mcp-servers/<snake>/server.py"},
+    {"name": "both_transports", "type": "grep", "pattern": "choices=\\[\"stdio\", \"http\"\\]", "path": "src/mcp-servers/<snake>/server.py"},
+    {"name": "env_files_config", "type": "grep", "pattern": "env_files\\(__file__\\)", "path": "src/mcp-servers/<snake>/config.py"},
+    {"name": "english_llm_text", "type": "rubric", "criterion": "Tool docstrings, Field descriptions and client-facing error messages are English (Hangul only allowed in comments, module docstrings, logs, README)"},
+    {"name": "error_code_tags", "type": "grep", "pattern": "\\[[A-Z_]+\\]\"", "path": "src/mcp-servers/<snake>/"},
+    {"name": "registry_entries", "type": "rubric", "criterion": "configs/mcp_servers.yaml gains <kebab> (stdio, command with --transport stdio) and <kebab>-http (streamable_http url) entries, each with English description and Korean description_ko; existing entries unchanged"},
+    {"name": "makefile_targets", "type": "grep", "pattern": "^(run|test|test-scenarios)-<kebab>:", "path": "Makefile"},
+    {"name": "known_first_party", "type": "grep", "pattern": "known-first-party = \\[.*\"<snake>\"", "path": "pyproject.toml"},
+    {"name": "ruff_clean", "type": "command", "command": "ruff check src/mcp-servers/<snake> tests/<snake> && ruff format --check src/mcp-servers/<snake> tests/<snake>"},
+    {"name": "pytest_pass", "type": "command", "command": "pytest tests/<snake> -q"},
+    {"name": "scenario_runner_ok", "type": "command", "command": "python scripts/mcp_cli.py test tests/scenarios/<kebab>.yaml"}
+  ],
+  "evals": [
+    {
+      "id": 1,
+      "name": "code-repo-3tools-reference-spec",
+      "prompt": ".claude/skills/mcp-spec-writer/references/example_code_repo.md 정의서를 보고 MCP 서버를 구현해 줘.",
+      "expected_output": "src/mcp-servers/code_repo_mcp/ 생성. Tool 3개라 tools.py 단일 파일(함수 + TOOLS + register_tools). server.py는 lifespan + --transport(기본 http, 스펙 §4.1 Streamable HTTP) + HTTP 분기 build_http_middleware. client.py는 BackendClient Protocol + MockBackendClient(§5.2 출력 예시 그대로) + HttpBackendClient(NotImplementedError + TODO). get_file_content는 mask_pii 후 wrap_untrusted. 한국어 LLM Description과 에러 메시지를 영어로 옮기고 [CODE] 태그. §4.2 엔드포인트와 인증이 '확인 필요'라 Phase 3 질문 또는 TODO(스펙 미정: ...) 마커. tests/code_repo_mcp/ (conftest, test_tools, test_mcp_contract, test_auth_middleware) + tests/scenarios/code-repo-mcp.yaml. 레지스트리 code-repo-mcp, code-repo-mcp-http. Makefile run-/test-/test-scenarios-code-repo-mcp.",
+      "files": [".claude/skills/mcp-spec-writer/references/example_code_repo.md"],
+      "assertions": [
+        {"name": "single_tools_file", "type": "files_exist", "values": ["src/mcp-servers/code_repo_mcp/tools.py"]},
+        {"name": "three_tools", "type": "rubric", "criterion": "test_mcp_contract expects exactly list_repositories, get_file_content, search_code"},
+        {"name": "untrusted_file_content", "type": "grep", "pattern": "wrap_untrusted", "path": "src/mcp-servers/code_repo_mcp/tools.py"},
+        {"name": "todo_markers_for_tbd", "type": "grep", "pattern": "TODO\\(스펙 미정", "path": "src/mcp-servers/code_repo_mcp/"},
+        {"name": "auth_test_present", "type": "files_exist", "values": ["tests/code_repo_mcp/test_auth_middleware.py"]}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "sales-dw-3tools-small-spec",
+      "prompt": ".claude/skills/mcp-server-builder/evals/fixtures/sales-dw-mcp_v0.1.md 정의서로 MCP 서버 만들어 줘.",
+      "expected_output": "src/mcp-servers/sales_dw_mcp/ 생성. Tool 3개라 tools.py 단일 파일. REST 백엔드, Bearer 인증, 기본 transport는 stdio(--transport 기본값 stdio, http도 지원). MockBackendClient가 list_datasets/describe_dataset/sample_rows 응답을 §5.2 예시대로 반환. sample_rows 결과 문자열은 mask_pii 적용. 레지스트리 sales-dw-mcp(stdio)와 sales-dw-mcp-http.",
+      "files": [".claude/skills/mcp-server-builder/evals/fixtures/sales-dw-mcp_v0.1.md"],
+      "assertions": [
+        {"name": "default_transport_stdio", "type": "grep", "pattern": "default=\"stdio\"", "path": "src/mcp-servers/sales_dw_mcp/server.py"},
+        {"name": "bearer_auth", "type": "grep", "pattern": "Bearer", "path": "src/mcp-servers/sales_dw_mcp/client.py"},
+        {"name": "three_tools", "type": "rubric", "criterion": "list_datasets, describe_dataset, sample_rows registered with read-only hints"},
+        {"name": "pii_masking", "type": "grep", "pattern": "mask_pii", "path": "src/mcp-servers/sales_dw_mcp/"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "incomplete-spec-triggers-askuserquestion",
+      "prompt": ".claude/skills/mcp-server-builder/evals/fixtures/partial-meta-mcp_v0.1.md 보고 MCP 서버 구현. 정보가 부족하면 물어봐.",
+      "expected_output": "Transport, 백엔드 프로토콜, 인증 방식, MCP 인증이 모두 '확인 필요'인 스펙. Phase 3에서 AskUserQuestion 한 번에 최대 4개(Transport > MCP 인증 > 프로토콜 > 백엔드 인증)를 묻는다. 답이 없거나 'TODO'면 기본값(http, REST, Bearer, 인증 미들웨어는 MCP_API_KEY로 on/off) + # TODO(스펙 미정: ...) 마커를 넣고 Mock으로 끝까지 동작. 비대화형 실행이면 질문 내용을 요약에 적고 같은 기본값으로 진행.",
+      "files": [".claude/skills/mcp-server-builder/evals/fixtures/partial-meta-mcp_v0.1.md"],
+      "assertions": [
+        {"name": "questions_batched", "type": "rubric", "criterion": "Exactly one batched AskUserQuestion (or, non-interactive, one listed question batch) with at most 4 items in the documented priority order"},
+        {"name": "todo_markers", "type": "grep_count_min", "pattern": "TODO\\(스펙 미정", "path": "src/mcp-servers/partial_meta_mcp/", "min": 3},
+        {"name": "mock_default", "type": "rubric", "criterion": "Backend URL setting defaults to empty string so MockBackendClient is used; no fake URL placeholder"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "multi-backend-spec",
+      "prompt": ".claude/skills/mcp-server-builder/evals/fixtures/order-ops-mcp_v0.1.md 정의서로 구현해 줘. Oracle + REST 두 백엔드 연동.",
+      "expected_output": "src/mcp-servers/order_ops_mcp/ 생성. client.py에 백엔드별 Protocol + Mock + 실 클라이언트 두 쌍(Oracle용, REST용). state.py AppState에 백엔드 필드 두 개와 getter 두 개. config.py에 백엔드별 env 키 분리(<snake>_db_*, <snake>_api_*). server.py lifespan이 둘 다 열고 닫음. Oracle 드라이버는 uv sync --extra oracle 안내 (pyproject 의존성 편집 없음).",
+      "files": [".claude/skills/mcp-server-builder/evals/fixtures/order-ops-mcp_v0.1.md"],
+      "assertions": [
+        {"name": "two_backends_in_state", "type": "rubric", "criterion": "state.py holds two backend fields with separate getters; lifespan opens and closes both"},
+        {"name": "separate_env_keys", "type": "rubric", "criterion": "config.py and .env.example have distinct keys for the Oracle DSN/credentials and the REST API URL/token"},
+        {"name": "oracle_extra_hint", "type": "rubric", "criterion": "Summary or README tells the user to run `uv sync --extra oracle` instead of editing dependencies"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "english-spec-input",
+      "prompt": "Build the MCP server from .claude/skills/mcp-server-builder/evals/fixtures/catalog-mcp_v0.1.md.",
+      "expected_output": "English-heading spec is accepted (no rejection). src/mcp-servers/catalog_mcp/ with tools.py (2 tools). LLM Description, Field descriptions, and error messages copied verbatim from the English spec with [CODE] tags. HttpBackendClient sends the X-API-Key header, timeout default 3 s from §7. get_entity returns metadata/untrusted_content with mask_pii on the description. Progress and summary in English. Registry catalog-mcp and catalog-mcp-http.",
+      "files": [".claude/skills/mcp-server-builder/evals/fixtures/catalog-mcp_v0.1.md"],
+      "assertions": [
+        {"name": "english_headings_accepted", "type": "rubric", "criterion": "The skill did not reject the spec for missing Korean headings"},
+        {"name": "verbatim_llm_description", "type": "grep", "pattern": "Search the metadata catalog for tables and dashboards", "path": "src/mcp-servers/catalog_mcp/tools.py"},
+        {"name": "api_key_header", "type": "grep", "pattern": "X-API-Key", "path": "src/mcp-servers/catalog_mcp/client.py"},
+        {"name": "timeout_from_spec", "type": "grep", "pattern": "timeout: float = 3", "path": "src/mcp-servers/catalog_mcp/config.py"},
+        {"name": "enum_literal", "type": "grep", "pattern": "Literal\\[\"table\", \"dashboard\"\\]", "path": "src/mcp-servers/catalog_mcp/tools.py"}
+      ]
+    }
+  ]
+}

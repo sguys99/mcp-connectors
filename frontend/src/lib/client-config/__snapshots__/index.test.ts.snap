@@ -1,0 +1,304 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`client config snapshots > claude-code / registry http with key 1`] = `
+"# cli
+claude mcp add --transport http starter-mcp-http http://localhost:8001/mcp --header 'X-MCP-API-Key: \${MCP_API_KEY}'
+
+# mcp-json
+{
+  "mcpServers": {
+    "starter-mcp-http": {
+      "type": "http",
+      "url": "http://localhost:8001/mcp",
+      "headers": {
+        "X-MCP-API-Key": "\${MCP_API_KEY}"
+      }
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > claude-code / registry http without key 1`] = `
+"# cli
+claude mcp add --transport http starter-mcp-http http://localhost:8001/mcp
+
+# mcp-json
+{
+  "mcpServers": {
+    "starter-mcp-http": {
+      "type": "http",
+      "url": "http://localhost:8001/mcp"
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > claude-code / registry stdio 1`] = `
+"# cli
+claude mcp add --transport stdio starter-mcp -- uv --directory /absolute/path/to/mcp-connectors/src/mcp-servers run python -m starter_mcp.server
+
+# mcp-json
+{
+  "mcpServers": {
+    "starter-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/mcp-connectors/src/mcp-servers",
+        "run",
+        "python",
+        "-m",
+        "starter_mcp.server"
+      ],
+      "env": {}
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > claude-code / runtime https 1`] = `
+"# cli
+claude mcp add --transport http ext-one https://api.example.com/mcp --header 'Authorization: Bearer \${AUTHORIZATION_TOKEN}' --header 'X-Api-Key: \${X_API_KEY}'
+
+# mcp-json
+{
+  "mcpServers": {
+    "ext-one": {
+      "type": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer \${AUTHORIZATION_TOKEN}",
+        "X-Api-Key": "\${X_API_KEY}"
+      }
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > claude-desktop / registry http with key 1`] = `
+"# desktop-file
+{
+  "mcpServers": {
+    "starter-mcp-http": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://localhost:8001/mcp",
+        "--allow-http",
+        "--header",
+        "X-MCP-API-Key:\${MCP_API_KEY}"
+      ],
+      "env": {
+        "MCP_API_KEY": "<your MCP_API_KEY>"
+      }
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > claude-desktop / registry http without key 1`] = `
+"# desktop-file
+{
+  "mcpServers": {
+    "starter-mcp-http": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://localhost:8001/mcp",
+        "--allow-http"
+      ]
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > claude-desktop / registry stdio 1`] = `
+"# desktop-file
+{
+  "mcpServers": {
+    "starter-mcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/mcp-connectors/src/mcp-servers",
+        "run",
+        "python",
+        "-m",
+        "starter_mcp.server"
+      ]
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > claude-desktop / runtime https 1`] = `
+"# desktop-file
+{
+  "mcpServers": {
+    "ext-one": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://api.example.com/mcp",
+        "--header",
+        "Authorization:\${AUTHORIZATION_TOKEN}",
+        "--header",
+        "X-Api-Key:\${X_API_KEY}"
+      ],
+      "env": {
+        "AUTHORIZATION_TOKEN": "Bearer <your AUTHORIZATION_TOKEN>",
+        "X_API_KEY": "<your X_API_KEY>"
+      }
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > cursor / registry http with key 1`] = `
+"# cursor-file
+{
+  "mcpServers": {
+    "starter-mcp-http": {
+      "url": "http://localhost:8001/mcp",
+      "headers": {
+        "X-MCP-API-Key": "\${env:MCP_API_KEY}"
+      }
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > cursor / registry http without key 1`] = `
+"# cursor-file
+{
+  "mcpServers": {
+    "starter-mcp-http": {
+      "url": "http://localhost:8001/mcp"
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > cursor / registry stdio 1`] = `
+"# cursor-file
+{
+  "mcpServers": {
+    "starter-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/mcp-connectors/src/mcp-servers",
+        "run",
+        "python",
+        "-m",
+        "starter_mcp.server"
+      ]
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > cursor / runtime https 1`] = `
+"# cursor-file
+{
+  "mcpServers": {
+    "ext-one": {
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer \${env:AUTHORIZATION_TOKEN}",
+        "X-Api-Key": "\${env:X_API_KEY}"
+      }
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > vscode / registry http with key 1`] = `
+"# vscode-file
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "mcp-api-key",
+      "description": "X-MCP-API-Key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "starter-mcp-http": {
+      "type": "http",
+      "url": "http://localhost:8001/mcp",
+      "headers": {
+        "X-MCP-API-Key": "\${input:mcp-api-key}"
+      }
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > vscode / registry http without key 1`] = `
+"# vscode-file
+{
+  "servers": {
+    "starter-mcp-http": {
+      "type": "http",
+      "url": "http://localhost:8001/mcp"
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > vscode / registry stdio 1`] = `
+"# vscode-file
+{
+  "servers": {
+    "starter-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/mcp-connectors/src/mcp-servers",
+        "run",
+        "python",
+        "-m",
+        "starter_mcp.server"
+      ]
+    }
+  }
+}"
+`;
+
+exports[`client config snapshots > vscode / runtime https 1`] = `
+"# vscode-file
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "authorization-token",
+      "description": "Authorization (token only, Bearer is added)",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "x-api-key",
+      "description": "X-Api-Key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "ext-one": {
+      "type": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer \${input:authorization-token}",
+        "X-Api-Key": "\${input:x-api-key}"
+      }
+    }
+  }
+}"
+`;

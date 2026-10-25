@@ -1,0 +1,397 @@
+meta:
+  target: guardrail_71
+  guardrail_name: enforce_select_only
+  error_code: WRITE_BLOCKED
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+
+tests:
+  - id: G71-001
+    category: block
+    call_type: direct
+    title: "DELETE 문 차단"
+    description: "DELETE 문은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "DELETE FROM customer WHERE customer_id = 1"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"DELETE FROM customer WHERE customer_id = 1\", \"max_rows\": 10}"
+
+  - id: G71-002
+    category: block
+    call_type: direct
+    title: "INSERT 문 차단"
+    description: "INSERT 문은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "INSERT INTO customer (customer_id, address_id) VALUES (9999, 1)"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"INSERT INTO customer (customer_id, address_id) VALUES (9999, 1)\", \"max_rows\": 10}"
+
+  - id: G71-003
+    category: block
+    call_type: direct
+    title: "UPDATE 문 차단"
+    description: "UPDATE 문은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "UPDATE customer SET active = 0 WHERE customer_id = 1"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"UPDATE customer SET active = 0 WHERE customer_id = 1\", \"max_rows\": 10}"
+
+  - id: G71-004
+    category: block
+    call_type: direct
+    title: "TRUNCATE 문 차단"
+    description: "TRUNCATE TABLE 문은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "TRUNCATE TABLE customer"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"TRUNCATE TABLE customer\", \"max_rows\": 10}"
+
+  - id: G71-005
+    category: block
+    call_type: direct
+    title: "DROP TABLE 차단"
+    description: "DROP TABLE DDL은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "DROP TABLE customer"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"DROP TABLE customer\", \"max_rows\": 10}"
+
+  - id: G71-006
+    category: block
+    call_type: direct
+    title: "CREATE TABLE 차단"
+    description: "CREATE TABLE DDL은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "CREATE TABLE test_t1 (id NUMBER)"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"CREATE TABLE test_t1 (id NUMBER)\", \"max_rows\": 10}"
+
+  - id: G71-007
+    category: block
+    call_type: direct
+    title: "ALTER TABLE 차단"
+    description: "ALTER TABLE DDL은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "ALTER TABLE customer ADD (test_col VARCHAR2(10))"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"ALTER TABLE customer ADD (test_col VARCHAR2(10))\", \"max_rows\": 10}"
+
+  - id: G71-008
+    category: block
+    call_type: direct
+    title: "GRANT 문 차단"
+    description: "GRANT DCL은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "GRANT SELECT ON customer TO PUBLIC"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"GRANT SELECT ON customer TO PUBLIC\", \"max_rows\": 10}"
+
+  - id: G71-009
+    category: pass
+    call_type: direct
+    title: "기본 SELECT 통과"
+    description: "WHERE 조건이 있는 단순 SELECT 문은 가드레일을 통과하여 데이터를 반환해야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, active FROM customer WHERE active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G71-010
+    category: pass
+    call_type: direct
+    title: "CTE (WITH...SELECT) 통과"
+    description: "WITH 절을 사용하는 CTE SELECT는 가드레일을 통과해야 한다. CTE는 최종적으로 SELECT를 실행하므로 허용된다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "WITH cte AS (SELECT rental_id, staff_id FROM rental WHERE return_date IS NULL) SELECT * FROM cte LIMIT 5"
+        max_rows: 5
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"WITH cte AS (SELECT rental_id, staff_id FROM rental WHERE return_date IS NULL) SELECT * FROM cte LIMIT 5\", \"max_rows\": 5}"
+
+  - id: G71-011
+    category: pass
+    call_type: direct
+    title: "집계 함수 SELECT 통과"
+    description: "COUNT(*) 집계 함수를 사용하는 SELECT는 가드레일을 통과해야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) FROM payment WHERE payment_date >= DATE '2024-01-01' AND payment_date < DATE '2025-01-01'"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) FROM payment WHERE payment_date >= DATE '2024-01-01' AND payment_date < DATE '2025-01-01'\", \"max_rows\": 10}"
+
+  - id: G71-012
+    category: pass
+    call_type: direct
+    title: "테이블 별칭 SELECT 통과"
+    description: "테이블 별칭(alias)을 사용하는 SELECT는 가드레일을 통과해야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT p.amount, p.payment_date FROM payment p WHERE p.payment_date >= DATE '2024-01-01' AND p.payment_date < DATE '2025-01-01' LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT p.amount, p.payment_date FROM payment p WHERE p.payment_date >= DATE '2024-01-01' AND p.payment_date < DATE '2025-01-01' LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G71-013
+    category: pass
+    call_type: direct
+    title: "DISTINCT SELECT 통과"
+    description: "SELECT DISTINCT 문은 가드레일을 통과해야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT DISTINCT active FROM customer WHERE active IS NOT NULL"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT DISTINCT active FROM customer WHERE active IS NOT NULL\", \"max_rows\": 10}"
+
+  - id: G71-014
+    category: edge
+    call_type: direct
+    title: "멀티 스테이트먼트 차단 (SELECT + DML)"
+    description: "세미콜론으로 구분된 멀티 스테이트먼트에 DML이 포함된 경우 WRITE_BLOCKED로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id FROM customer WHERE active = 1; DELETE FROM customer"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id FROM customer WHERE active = 1; DELETE FROM customer\", \"max_rows\": 10}"
+
+  - id: G71-015
+    category: edge
+    call_type: direct
+    title: "소문자 SELECT 통과 (대소문자 무관)"
+    description: "모두 소문자로 작성된 SELECT 문도 가드레일을 통과해야 한다. 가드레일은 대소문자를 구분하지 않아야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "select customer_id, address_id from customer where active = 1 limit 5"
+        max_rows: 5
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"select customer_id, address_id from customer where active = 1 limit 5\", \"max_rows\": 5}"
+
+  - id: G71-016
+    category: edge
+    call_type: direct
+    title: "MERGE 문 차단"
+    description: "MERGE INTO 문은 UPDATE를 내포하므로 WRITE_BLOCKED로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "MERGE INTO customer USING (SELECT 1 AS customer_id) AS src ON (customer.customer_id = src.customer_id) WHEN MATCHED THEN UPDATE SET active = 0"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"MERGE INTO customer USING (SELECT 1 AS customer_id) AS src ON (customer.customer_id = src.customer_id) WHEN MATCHED THEN UPDATE SET active = 0\", \"max_rows\": 10}"
+
+  - id: G71-017
+    category: edge
+    call_type: direct
+    title: "COMMENT ON 차단"
+    description: "COMMENT ON TABLE DDL은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "COMMENT ON TABLE customer IS 'test comment'"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"COMMENT ON TABLE customer IS 'test comment'\", \"max_rows\": 10}"
+
+  - id: G71-018
+    category: edge
+    call_type: direct
+    title: "CALL 프로시저 차단"
+    description: "CALL 문(저장 프로시저 호출)은 SELECT 전용 가드레일에 의해 WRITE_BLOCKED 에러로 차단되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "CALL some_stored_proc()"
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "WRITE_BLOCKED"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"CALL some_stored_proc()\", \"max_rows\": 10}"
+
+  - id: G71-019
+    category: edge
+    call_type: direct
+    title: "공백만 있는 SQL 차단"
+    description: "공백 문자만 있는 빈 SQL 입력은 WRITE_BLOCKED 또는 INVALID_INPUT 에러로 거부되어야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "   "
+        max_rows: 10
+    expected:
+      status: error
+      error_code: "INVALID_INPUT"  # 빈 SQL이므로 INVALID_INPUT 또는 WRITE_BLOCKED 모두 허용
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"   \", \"max_rows\": 10}"
+
+  - id: G71-020
+    category: edge
+    call_type: direct
+    title: "SELECT 문 내 인라인 주석 통과"
+    description: "/* ... */ 인라인 주석이 포함된 SELECT 문은 가드레일을 통과해야 한다. 주석은 SELECT의 일부로 간주된다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT /* inline comment */ customer_id FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 5
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT /* inline comment */ customer_id FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 5}"

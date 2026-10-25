@@ -1,0 +1,442 @@
+meta:
+  target: get_tables_schema
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+  cli_server: nl2sql-mcp
+
+# 기준 스키마: Pagila (public), 테이블 15개 + 뷰 7개. 식별자는 소문자로 반환된다.
+# 응답은 {"tables": [스키마...], "not_found": [이름...]} 형태이며, 각 스키마의 FK 는 foreign_keys[*].ref_table 에 있다.
+
+tests:
+  - id: T04-001
+    category: positive
+    call_type: direct
+    title: "customer + rental 두 테이블 스키마 동시 조회"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["customer", "rental"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 2}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["customer", "rental"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["customer", "rental"]}'
+
+  - id: T04-002
+    category: positive
+    call_type: direct
+    title: "payment + rental FK 관계(payment.rental_id → rental) 포함 스키마 조회"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["payment", "rental"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 2}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["payment", "rental"]}
+        - {field: "tables[?table_name=='payment'].foreign_keys[*].ref_table", op: "contains", value: "rental"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["payment", "rental"]}'
+
+  - id: T04-003
+    category: positive
+    call_type: direct
+    title: "film + film_category 스키마 동시 조회"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["film", "film_category"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 2}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["film", "film_category"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["film", "film_category"]}'
+
+  - id: T04-004
+    category: positive
+    call_type: direct
+    title: "staff + store 스키마 동시 조회 (staff.store_id → store)"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["staff", "store"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 2}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["staff", "store"]}
+        - {field: "tables[?table_name=='staff'].foreign_keys[*].ref_table", op: "contains", value: "store"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["staff", "store"]}'
+
+  - id: T04-005
+    category: positive
+    call_type: direct
+    title: "rental + payment + inventory 3개 테이블 조회 (not_found=[])"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["rental", "payment", "inventory"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 3}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["rental", "payment", "inventory"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["rental", "payment", "inventory"]}'
+
+  - id: T04-006
+    category: positive
+    call_type: direct
+    title: "customer 단일 테이블 스키마 조회"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["customer"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 1}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["customer"]}
+        - {field: "tables[0].columns", op: "contains_field", value: "store_id"}
+        - {field: "tables[0].columns", op: "contains_field", value: "create_date"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["customer"]}'
+
+  - id: T04-007
+    category: negative
+    call_type: direct
+    title: "21개 테이블명 입력 시 INVALID_INPUT 에러 (최대 20개 초과)"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names:
+          - "actor"
+          - "address"
+          - "category"
+          - "city"
+          - "country"
+          - "customer"
+          - "film"
+          - "film_actor"
+          - "film_category"
+          - "inventory"
+          - "language"
+          - "payment"
+          - "rental"
+          - "staff"
+          - "store"
+          - "actor_info"
+          - "customer_list"
+          - "film_list"
+          - "nicer_but_slower_film_list"
+          - "sales_by_film_category"
+          - "sales_by_store"
+    expected:
+      status: error
+      error_code: "INVALID_INPUT"
+      checks:
+        - {field: "error.code", op: "eq", value: "INVALID_INPUT"}
+        - {field: "error.message", op: "contains", value: "20"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["actor","address","category","city","country","customer","film","film_actor","film_category","inventory","language","payment","rental","staff","store","actor_info","customer_list","film_list","nicer_but_slower_film_list","sales_by_film_category","sales_by_store"]}'
+
+  - id: T04-008
+    category: negative
+    call_type: direct
+    title: "빈 리스트 입력 시 INVALID_INPUT 에러"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: []
+    expected:
+      status: error
+      error_code: "INVALID_INPUT"
+      checks:
+        - {field: "error.code", op: "eq", value: "INVALID_INPUT"}
+        - {field: "error.message", op: "contains_any", value: ["empty", "required"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": []}'
+
+  - id: T04-009
+    category: negative
+    call_type: direct
+    title: "존재하지 않는 테이블만 입력 → tables=[], not_found=['NONEXISTENT_XYZ']"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["NONEXISTENT_XYZ"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables", op: "eq", value: []}
+        - {field: "not_found", op: "eq", value: ["NONEXISTENT_XYZ"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["NONEXISTENT_XYZ"]}'
+
+  - id: T04-010
+    category: negative
+    call_type: direct
+    title: "유효 테이블과 존재하지 않는 테이블 혼합 → tables=1, not_found=['NONEXISTENT_XYZ']"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["customer", "NONEXISTENT_XYZ"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 1}
+        - {field: "tables[*].table_name", op: "contains_all", value: ["customer"]}
+        - {field: "not_found", op: "eq", value: ["NONEXISTENT_XYZ"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["customer", "NONEXISTENT_XYZ"]}'
+
+  - id: T04-011
+    category: edge
+    call_type: direct
+    title: "정확히 20개 테이블명 입력 → 전부 반환, not_found=[]"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names:
+          - "actor"
+          - "address"
+          - "category"
+          - "city"
+          - "country"
+          - "customer"
+          - "film"
+          - "film_actor"
+          - "film_category"
+          - "inventory"
+          - "language"
+          - "payment"
+          - "rental"
+          - "staff"
+          - "store"
+          - "actor_info"
+          - "customer_list"
+          - "film_list"
+          - "nicer_but_slower_film_list"
+          - "sales_by_film_category"
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 20}
+        - {field: "not_found", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["actor","address","category","city","country","customer","film","film_actor","film_category","inventory","language","payment","rental","staff","store","actor_info","customer_list","film_list","nicer_but_slower_film_list","sales_by_film_category"]}'
+
+  - id: T04-012
+    category: edge
+    call_type: direct
+    title: "대문자/소문자 혼합 테이블명 입력 시 대소문자 비구분 처리 확인"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["CUSTOMER", "rental"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables[*].table_name", op: "contains_all", value: ["customer", "rental"]}
+        - {field: "not_found", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["CUSTOMER", "rental"]}'
+
+  - id: T04-013
+    category: edge
+    call_type: direct
+    title: "동일 테이블명 중복 입력 시 중복 제거 동작 확인"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["customer", "customer"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 1}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "eq", value: ["customer"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["customer", "customer"]}'
+
+  - id: T04-014
+    category: edge
+    call_type: direct
+    title: "소형 코드 마스터 category (16행) 스키마 단독 조회"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["category"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 1}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "eq", value: ["category"]}
+        - {field: "tables[0].columns", op: "contains_field", value: "name"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["category"]}'
+
+  - id: T04-015
+    category: edge
+    call_type: direct
+    title: "유효 1개 + 존재하지 않는 2개 혼합 → tables=1, not_found=2"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["film", "NONEXISTENT_A", "NONEXISTENT_B"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 1}
+        - {field: "tables[*].table_name", op: "eq", value: ["film"]}
+        - {field: "not_found", op: "eq", value: ["NONEXISTENT_A", "NONEXISTENT_B"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["film", "NONEXISTENT_A", "NONEXISTENT_B"]}'
+
+  - id: T04-016
+    category: edge
+    call_type: direct
+    title: "스키마 한정자 포함 테이블명 혼합 입력 (public.customer, rental) → 둘 다 정규화되어 반환"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["public.customer", "rental"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables[*].table_name", op: "contains_all", value: ["customer", "rental"]}
+        - {field: "not_found", op: "eq", value: []}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["public.customer", "rental"]}'
+
+  - id: T04-017
+    category: edge
+    call_type: direct
+    title: "payment 조회 → 복수 FK(customer, staff, rental) 체인 검증"
+    input:
+      tool: get_tables_schema
+      params:
+        table_names: ["payment"]
+    expected:
+      status: success
+      checks:
+        - {field: "tables | length", op: "eq", value: 1}
+        - {field: "not_found", op: "eq", value: []}
+        - {field: "tables[*].table_name", op: "eq", value: ["payment"]}
+        - {field: "tables[0].foreign_keys", op: "length_eq", value: 3}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool get_tables_schema \
+          --params '{"table_names": ["payment"]}'
+
+  - id: T04-018
+    category: chat
+    call_type: chat
+    title: "자연어로 고객, 대여 테이블 스키마 동시 조회 요청"
+    chat_prompt: "고객 테이블과 대여 테이블 스키마 같이 보여줘"
+    expected:
+      tool_called: get_tables_schema
+      status: success
+      checks:
+        - {field: "tool_input.table_names", op: "contains", value: "customer"}
+        - {field: "tool_input.table_names", op: "contains", value: "rental"}
+        - {field: "result.tables | length", op: "eq", value: 2}
+      human_verify: "응답에 customer, rental 두 테이블의 컬럼 목록이 모두 포함되어 있는지 확인"
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T04-019
+    category: chat
+    call_type: chat
+    title: "JOIN 쿼리 작성을 위해 결제, 대여 테이블 스키마 동시 조회"
+    chat_prompt: "조인 쿼리 작성 위해 결제와 대여 테이블 구조 한번에 알려줘"
+    expected:
+      tool_called: get_tables_schema
+      status: success
+      checks:
+        - {field: "tool_input.table_names", op: "contains", value: "payment"}
+        - {field: "tool_input.table_names", op: "contains", value: "rental"}
+        - {field: "result.tables | length", op: "eq", value: 2}
+      human_verify: "응답에 payment 와 rental 스키마가 포함되고, FK 관계(payment.rental_id → rental.rental_id) 안내가 있는지 확인"
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T04-020
+    category: chat
+    call_type: chat
+    title: "영화와 출연 배우 연결 테이블 2개 한꺼번에 스키마 조회"
+    chat_prompt: "영화 테이블이랑 영화별 출연 배우 연결 테이블 한꺼번에 조회해줘"
+    expected:
+      tool_called: get_tables_schema
+      status: success
+      checks:
+        - {field: "tool_input.table_names", op: "contains_any", value: ["film", "film_actor"]}
+        - {field: "result.tables | length", op: "gte", value: 2}
+      human_verify: "응답에 film 과 film_actor 두 테이블의 컬럼 구조가 모두 포함되어 있는지 확인"
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"

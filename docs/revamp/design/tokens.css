@@ -1,0 +1,573 @@
+/* ==========================================================================
+   MCP Connectors design tokens (Phase 3 draft, shared by concepts A/B/C)
+   --------------------------------------------------------------------------
+   How to use in a concept HTML (Artifact, no <html> tag available):
+     1. Put this line right after <title>, before <style>, so it runs first:
+          <script>document.documentElement.dataset.concept="a"</script>
+        ("a" Console, "b" Studio, "c" Workbench)
+     2. Inline this whole file inside <style>.
+     3. Theme = data-theme on <html>: "light" | "dark" | removed (= follow OS).
+        The concept A page is dark-first: its script sets data-theme="dark"
+        on load when the viewer has no saved preference. The final design
+        (final.html) drops that and follows the OS until the viewer picks a
+        theme. The CSS below stays a single light-first source of truth for
+        every page, so no value is written twice. Rationale: tokens.md
+        section 2.
+     4. Load the concept's Google Fonts <link> (URLs in the concept blocks).
+
+   Layers:
+     1. Common structure: spacing, radius scale, shadow, type scale, motion,
+        z-index, neutral steps (hue comes from the concept), semantic colors,
+        syntax and log colors.
+     2. Theme mapping: light in bare :root, dark in the media query and in
+        :root[data-theme="dark"] (identical values).
+     3. Concept overrides: brand hue and colors, neutral hue, fonts, radius.
+
+   Naming: brand tokens are --brand-*, not --accent-*, because shadcn's
+   --accent means "hover surface". Divider is --line, input boundary is
+   --line-strong. Mapping to shadcn variables: tokens.md section 6.
+   Colors are oklch. Hex comments are sRGB approximations: in the common
+   blocks they show the no-concept fallback (neutral hue 250), in concept
+   blocks the concept itself. Per-concept hex for every token:
+   python3 docs/revamp/design/scripts/check_contrast.py --hex
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Common structure + light theme (bare :root)
+   -------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  /* Concept hooks (overridden per concept; fallback = cool gray) */
+  --neutral-hue: 250;
+  --brand-hue: 250;
+
+  /* Spacing, 4px grid */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Layout sizes */
+  --control-h-sm: 28px;
+  --control-h-md: 32px;
+  --control-h-lg: 40px;
+  --touch-min: 44px;
+  --header-h: 48px;
+  --sidebar-w: 248px;
+  --content-max: 1280px;
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+
+  /* Radius scale, derived from --radius (set per concept) */
+  --radius: 6px;
+  --radius-xs: calc(var(--radius) * 0.5);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-full: 9999px;
+
+  /* Typography (families set per concept) */
+  --font-kr-fallback: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-display: system-ui, var(--font-kr-fallback);
+  --font-body: system-ui, var(--font-kr-fallback);
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --text-2xs: 11px;  --leading-2xs: 16px;
+  --text-xs: 12px;   --leading-xs: 18px;
+  --text-sm: 13px;   --leading-sm: 20px;
+  --text-base: 14px; --leading-base: 22px;
+  --text-md: 16px;   --leading-md: 26px;
+  --text-lg: 18px;   --leading-lg: 28px;
+  --text-xl: 20px;   --leading-xl: 30px;
+  --text-2xl: 24px;  --leading-2xl: 32px;
+  --text-3xl: 30px;  --leading-3xl: 38px;
+  --text-4xl: 36px;  --leading-4xl: 44px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0;
+  --tracking-caps: 0.06em;
+
+  /* Motion */
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1.15);
+
+  /* z-index */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-sidebar: 200;
+  --z-dropdown: 1000;
+  --z-overlay: 1100;
+  --z-modal: 1200;
+  --z-popover: 1300;
+  --z-toast: 1400;
+  --z-tooltip: 1500;
+
+  /* Focus */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* Neutral steps: fixed L and C, hue from the concept (slight brand tint) */
+  --n-0: oklch(0.995 0.002 var(--neutral-hue));       /* #fcfdff */
+  --n-25: oklch(0.985 0.003 var(--neutral-hue));      /* #f9fafc */
+  --n-50: oklch(0.972 0.004 var(--neutral-hue));      /* #f4f6f8 */
+  --n-100: oklch(0.952 0.006 var(--neutral-hue));     /* #eceff3 */
+  --n-150: oklch(0.928 0.007 var(--neutral-hue));     /* #e4e8ec */
+  --n-200: oklch(0.900 0.009 var(--neutral-hue));     /* #dadfe4 */
+  --n-300: oklch(0.840 0.011 var(--neutral-hue));     /* #c5cbd2 */
+  --n-400: oklch(0.720 0.014 var(--neutral-hue));     /* #9ea5ad */
+  --n-450: oklch(0.640 0.015 var(--neutral-hue));     /* #868d95 */
+  --n-500: oklch(0.560 0.016 var(--neutral-hue));     /* #6e757e */
+  --n-600: oklch(0.470 0.016 var(--neutral-hue));     /* #545c64 */
+  --n-700: oklch(0.380 0.015 var(--neutral-hue));     /* #3c434a */
+  --n-750: oklch(0.320 0.014 var(--neutral-hue));     /* #2e343a */
+  --n-800: oklch(0.275 0.013 var(--neutral-hue));     /* #23282e */
+  --n-850: oklch(0.240 0.012 var(--neutral-hue));     /* #1b2025 */
+  --n-900: oklch(0.210 0.011 var(--neutral-hue));     /* #15191d */
+  --n-950: oklch(0.180 0.010 var(--neutral-hue));     /* #0e1216 */
+  --n-1000: oklch(0.150 0.009 var(--neutral-hue));    /* #080b0f */
+
+  /* Shadows (light) */
+  --shadow-color: oklch(0.25 0.02 var(--neutral-hue)); /* #1a222b */
+  --shadow-xs: 0 1px 2px oklch(0.25 0.02 var(--neutral-hue) / 0.06);
+  --shadow-sm: 0 1px 3px oklch(0.25 0.02 var(--neutral-hue) / 0.08), 0 1px 2px oklch(0.25 0.02 var(--neutral-hue) / 0.04);
+  --shadow-md: 0 4px 12px -2px oklch(0.25 0.02 var(--neutral-hue) / 0.10), 0 2px 4px -2px oklch(0.25 0.02 var(--neutral-hue) / 0.06);
+  --shadow-lg: 0 12px 32px -8px oklch(0.25 0.02 var(--neutral-hue) / 0.16), 0 4px 8px -4px oklch(0.25 0.02 var(--neutral-hue) / 0.06);
+  --shadow-xl: 0 24px 64px -12px oklch(0.25 0.02 var(--neutral-hue) / 0.24), 0 8px 16px -8px oklch(0.25 0.02 var(--neutral-hue) / 0.08);
+
+  /* Surfaces and text (light) */
+  --bg: var(--n-25);
+  --bg-subtle: var(--n-50);
+  --surface: var(--n-0);
+  --surface-raised: var(--n-0);
+  --surface-sunken: var(--n-50);
+  --surface-hover: var(--n-100);
+  --surface-active: var(--n-150);
+  --line: var(--n-150);
+  --line-strong: var(--n-450);
+  --fg: var(--n-1000);
+  --fg-muted: var(--n-600);
+  --fg-subtle: var(--n-450);
+  --fg-on-inverse: var(--n-0);
+  --inverse: var(--n-900);
+  --overlay: oklch(0.2 0.01 var(--neutral-hue) / 0.45);
+
+  /* Brand fallback (each concept overrides all of these) */
+  --brand: oklch(0.50 0.02 var(--brand-hue));         /* #5b646f */
+  --brand-hover: oklch(0.45 0.02 var(--brand-hue));   /* #4d5660 */
+  --brand-fg: var(--n-0);
+  --brand-subtle: var(--n-100);
+  --brand-text: oklch(0.45 0.02 var(--brand-hue));    /* #4d5660 */
+  --brand-border: var(--n-300);
+  --focus-ring: oklch(0.55 0.02 var(--brand-hue));    /* #69737d */
+  --selection: oklch(0.90 0.03 var(--brand-hue));     /* #d0e0f2 */
+
+  /* Semantic: success (green 150), warning (orange 62), danger (red 25), info (blue 245) */
+  --success-hue: 150;
+  --warning-hue: 62;
+  --danger-hue: 25;
+  --info-hue: 245;
+
+  --success-fg: oklch(0.46 0.12 var(--success-hue));  /* #0f6a31 */
+  --success-bg: oklch(0.962 0.030 var(--success-hue)); /* #e5f9e8 */
+  --success-border: oklch(0.62 0.13 var(--success-hue)); /* #429c5a */
+  --success-solid: oklch(0.54 0.14 var(--success-hue)); /* #17843f */
+  --success-solid-fg: var(--n-0);
+
+  --warning-fg: oklch(0.49 0.12 calc(var(--warning-hue) - 8)); /* #934a06 */
+  --warning-bg: oklch(0.967 0.040 calc(var(--warning-hue) + 18)); /* #fff2de */
+  --warning-border: oklch(0.64 0.14 var(--warning-hue)); /* #c77618 */
+  --warning-solid: oklch(0.66 0.15 var(--warning-hue)); /* #d27908 */
+  --warning-solid-fg: var(--n-1000);
+
+  --danger-fg: oklch(0.50 0.17 var(--danger-hue));    /* #b02a2d */
+  --danger-bg: oklch(0.962 0.025 var(--danger-hue));  /* #ffeeec */
+  --danger-border: oklch(0.62 0.18 var(--danger-hue)); /* #de4e4b */
+  --danger-solid: oklch(0.55 0.19 var(--danger-hue)); /* #c92f33 */
+  --danger-solid-fg: var(--n-0);
+
+  --info-fg: oklch(0.48 0.13 var(--info-hue));        /* #00629d */
+  --info-bg: oklch(0.962 0.025 var(--info-hue));      /* #e8f4ff */
+  --info-border: oklch(0.62 0.13 var(--info-hue));    /* #348dcf */
+  --info-solid: oklch(0.53 0.14 var(--info-hue));     /* #0071b3 */
+  --info-solid-fg: var(--n-0);
+
+  /* JSON syntax (light, checked on --surface-sunken and --surface) */
+  --syntax-key: oklch(0.48 0.13 255);                 /* #215da5 */
+  --syntax-string: oklch(0.49 0.12 150);              /* #1d7339 */
+  --syntax-number: oklch(0.52 0.15 45);               /* #ab4500 */
+  --syntax-boolean: oklch(0.49 0.17 330);             /* #92318d */
+  --syntax-null: oklch(0.52 0.012 var(--neutral-hue)); /* #646a70 */
+  --syntax-punct: var(--fg-muted);
+
+  /* Log levels (JSON-RPC log, server log) */
+  --log-debug: var(--fg-muted);
+  --log-info: var(--info-fg);
+  --log-warn: var(--warning-fg);
+  --log-error: var(--danger-fg);
+  --log-request: var(--brand-text);
+  --log-response: var(--success-fg);
+
+  /* Charts (chart-1 is the brand, set per concept) */
+  --chart-1: var(--brand);
+  --chart-2: oklch(0.58 0.12 165);                    /* #0a9068 */
+  --chart-3: oklch(0.62 0.16 45);                     /* #d16022 */
+  --chart-4: oklch(0.56 0.18 340);                    /* #b53e95 */
+  --chart-5: oklch(0.58 0.13 240);                    /* #0c82bf */
+  --chart-6: oklch(0.55 0.15 295);                    /* #795bbf, violet for guardrail spans */
+
+  /* Trace spans (waterfall in Chat and Inspector timing). One hue per span
+     kind, about 45 degrees apart: LLM = brand, proxy/DB = blue 240,
+     guardrail = violet 295, tool = magenta 340, error = danger red,
+     approval wait = warning edge color drawn as a hatch. Declared once here
+     and only through theme-switching tokens, so the dark blocks need no
+     copy and a page can still override a span kind in its own :root. */
+  --span-llm: var(--chart-1);
+  --span-tool: var(--chart-4);
+  --span-guard: var(--chart-6);
+  --span-proxy: var(--chart-5);
+  --span-err: var(--danger-solid);
+  --span-wait: var(--warning-border);
+}
+
+/* --------------------------------------------------------------------------
+   2. Dark theme (system preference, unless data-theme="light")
+      The block right after this repeats the exact same values for an
+      explicit data-theme="dark". Keep the two blocks identical.
+   -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --shadow-color: oklch(0 0 0);                     /* #000000 */
+    --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.30);
+    --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.36), 0 1px 2px oklch(0 0 0 / 0.24);
+    --shadow-md: 0 4px 12px -2px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.30);
+    --shadow-lg: 0 12px 32px -8px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.30);
+    --shadow-xl: 0 24px 64px -12px oklch(0 0 0 / 0.65), 0 8px 16px -8px oklch(0 0 0 / 0.35);
+
+    --bg: var(--n-950);
+    --bg-subtle: var(--n-1000);
+    --surface: var(--n-900);
+    --surface-raised: var(--n-850);
+    --surface-sunken: var(--n-1000);
+    --surface-hover: var(--n-800);
+    --surface-active: var(--n-750);
+    --line: var(--n-800);
+    --line-strong: var(--n-500);
+    --fg: var(--n-25);
+    --fg-muted: var(--n-400);
+    --fg-subtle: var(--n-500);
+    --fg-on-inverse: var(--n-1000);
+    --inverse: var(--n-100);
+    --overlay: oklch(0 0 0 / 0.6);
+
+    --brand: oklch(0.75 0.02 var(--brand-hue));       /* #a5afba */
+    --brand-hover: oklch(0.80 0.02 var(--brand-hue)); /* #b4bfca */
+    --brand-fg: var(--n-1000);
+    --brand-subtle: var(--n-800);
+    --brand-text: oklch(0.80 0.02 var(--brand-hue));  /* #b4bfca */
+    --brand-border: var(--n-700);
+    --focus-ring: oklch(0.75 0.02 var(--brand-hue));  /* #a5afba */
+    --selection: oklch(0.38 0.04 var(--brand-hue));   /* #324457 */
+
+    --success-fg: oklch(0.80 0.13 var(--success-hue)); /* #7cd591 */
+    --success-bg: oklch(0.27 0.045 var(--success-hue)); /* #152d1a */
+    --success-border: oklch(0.55 0.11 var(--success-hue)); /* #3b834e */
+    --success-solid: oklch(0.72 0.15 var(--success-hue)); /* #53be70 */
+    --success-solid-fg: var(--n-1000);
+
+    --warning-fg: oklch(0.83 0.12 calc(var(--warning-hue) + 8)); /* #f9b96c */
+    --warning-bg: oklch(0.28 0.045 var(--warning-hue)); /* #392310 */
+    --warning-border: oklch(0.58 0.11 var(--warning-hue)); /* #a86a2c */
+    --warning-solid: oklch(0.78 0.14 var(--warning-hue)); /* #f6a14f */
+    --warning-solid-fg: var(--n-1000);
+
+    --danger-fg: oklch(0.78 0.13 var(--danger-hue));  /* #ff958d */
+    --danger-bg: oklch(0.27 0.055 var(--danger-hue)); /* #3d1b18 */
+    --danger-border: oklch(0.58 0.15 var(--danger-hue)); /* #c34f4b */
+    --danger-solid: oklch(0.68 0.17 var(--danger-hue)); /* #ef6661 */
+    --danger-solid-fg: var(--n-1000);
+
+    --info-fg: oklch(0.80 0.10 var(--info-hue));      /* #86c5fa */
+    --info-bg: oklch(0.27 0.045 var(--info-hue));     /* #12283b */
+    --info-border: oklch(0.56 0.11 var(--info-hue));  /* #337ab0 */
+    --info-solid: oklch(0.72 0.12 var(--info-hue));   /* #5eaceb */
+    --info-solid-fg: var(--n-1000);
+
+    --syntax-key: oklch(0.80 0.10 240);               /* #80c7f8 */
+    --syntax-string: oklch(0.80 0.13 148);            /* #80d58d */
+    --syntax-number: oklch(0.80 0.12 60);             /* #f6ab6b */
+    --syntax-boolean: oklch(0.78 0.13 330);           /* #e698df */
+    --syntax-null: oklch(0.68 0.012 var(--neutral-hue)); /* #9399a0 */
+
+    --chart-2: oklch(0.72 0.12 165);                  /* #4dbc92 */
+    --chart-3: oklch(0.72 0.15 50);                   /* #ee8545 */
+    --chart-4: oklch(0.70 0.16 340);                  /* #de73bd */
+    --chart-5: oklch(0.72 0.12 240);                  /* #55aee8 */
+    --chart-6: oklch(0.72 0.12 295);                  /* #aa95e8 */
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --shadow-color: oklch(0 0 0);                       /* #000000 */
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.30);
+  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.36), 0 1px 2px oklch(0 0 0 / 0.24);
+  --shadow-md: 0 4px 12px -2px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.30);
+  --shadow-lg: 0 12px 32px -8px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.30);
+  --shadow-xl: 0 24px 64px -12px oklch(0 0 0 / 0.65), 0 8px 16px -8px oklch(0 0 0 / 0.35);
+
+  --bg: var(--n-950);
+  --bg-subtle: var(--n-1000);
+  --surface: var(--n-900);
+  --surface-raised: var(--n-850);
+  --surface-sunken: var(--n-1000);
+  --surface-hover: var(--n-800);
+  --surface-active: var(--n-750);
+  --line: var(--n-800);
+  --line-strong: var(--n-500);
+  --fg: var(--n-25);
+  --fg-muted: var(--n-400);
+  --fg-subtle: var(--n-500);
+  --fg-on-inverse: var(--n-1000);
+  --inverse: var(--n-100);
+  --overlay: oklch(0 0 0 / 0.6);
+
+  --brand: oklch(0.75 0.02 var(--brand-hue));         /* #a5afba */
+  --brand-hover: oklch(0.80 0.02 var(--brand-hue));   /* #b4bfca */
+  --brand-fg: var(--n-1000);
+  --brand-subtle: var(--n-800);
+  --brand-text: oklch(0.80 0.02 var(--brand-hue));    /* #b4bfca */
+  --brand-border: var(--n-700);
+  --focus-ring: oklch(0.75 0.02 var(--brand-hue));    /* #a5afba */
+  --selection: oklch(0.38 0.04 var(--brand-hue));     /* #324457 */
+
+  --success-fg: oklch(0.80 0.13 var(--success-hue));  /* #7cd591 */
+  --success-bg: oklch(0.27 0.045 var(--success-hue)); /* #152d1a */
+  --success-border: oklch(0.55 0.11 var(--success-hue)); /* #3b834e */
+  --success-solid: oklch(0.72 0.15 var(--success-hue)); /* #53be70 */
+  --success-solid-fg: var(--n-1000);
+
+  --warning-fg: oklch(0.83 0.12 calc(var(--warning-hue) + 8)); /* #f9b96c */
+  --warning-bg: oklch(0.28 0.045 var(--warning-hue)); /* #392310 */
+  --warning-border: oklch(0.58 0.11 var(--warning-hue)); /* #a86a2c */
+  --warning-solid: oklch(0.78 0.14 var(--warning-hue)); /* #f6a14f */
+  --warning-solid-fg: var(--n-1000);
+
+  --danger-fg: oklch(0.78 0.13 var(--danger-hue));    /* #ff958d */
+  --danger-bg: oklch(0.27 0.055 var(--danger-hue));   /* #3d1b18 */
+  --danger-border: oklch(0.58 0.15 var(--danger-hue)); /* #c34f4b */
+  --danger-solid: oklch(0.68 0.17 var(--danger-hue)); /* #ef6661 */
+  --danger-solid-fg: var(--n-1000);
+
+  --info-fg: oklch(0.80 0.10 var(--info-hue));        /* #86c5fa */
+  --info-bg: oklch(0.27 0.045 var(--info-hue));       /* #12283b */
+  --info-border: oklch(0.56 0.11 var(--info-hue));    /* #337ab0 */
+  --info-solid: oklch(0.72 0.12 var(--info-hue));     /* #5eaceb */
+  --info-solid-fg: var(--n-1000);
+
+  --syntax-key: oklch(0.80 0.10 240);                 /* #80c7f8 */
+  --syntax-string: oklch(0.80 0.13 148);              /* #80d58d */
+  --syntax-number: oklch(0.80 0.12 60);               /* #f6ab6b */
+  --syntax-boolean: oklch(0.78 0.13 330);             /* #e698df */
+  --syntax-null: oklch(0.68 0.012 var(--neutral-hue)); /* #9399a0 */
+
+  --chart-2: oklch(0.72 0.12 165);                    /* #4dbc92 */
+  --chart-3: oklch(0.72 0.15 50);                     /* #ee8545 */
+  --chart-4: oklch(0.70 0.16 340);                    /* #de73bd */
+  --chart-5: oklch(0.72 0.12 240);                    /* #55aee8 */
+  --chart-6: oklch(0.72 0.12 295);                    /* #aa95e8 */
+}
+
+/* --------------------------------------------------------------------------
+   3. Concept overrides
+      Each concept has three blocks: base (light brand, fonts, radius),
+      dark via media query, dark via data-theme. Brand lines and shape
+      lines are grouped so a brand can be moved to another layout later.
+   -------------------------------------------------------------------------- */
+
+/* ---- A "Console": cyan/teal, mono-forward developer tool, dark-first ----
+   Fonts: https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400..700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap */
+:root[data-concept="a"] {
+  /* shape + type */
+  --radius: 4px;
+  --font-display: "JetBrains Mono", "IBM Plex Sans KR", ui-monospace, monospace;
+  --font-body: "IBM Plex Sans", "IBM Plex Sans KR", var(--font-kr-fallback);
+  --font-mono: "JetBrains Mono", "IBM Plex Sans KR", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* brand */
+  --neutral-hue: 215;
+  --brand-hue: 200;
+  --brand: oklch(0.52 0.095 205);                     /* #007781 */
+  --brand-hover: oklch(0.47 0.090 205);               /* #006770 */
+  --brand-fg: var(--n-0);
+  --brand-subtle: oklch(0.955 0.025 205);             /* #def5f8 */
+  --brand-text: oklch(0.48 0.090 205);                /* #006b74 */
+  --brand-border: oklch(0.70 0.090 205);              /* #50afb9 */
+  --focus-ring: oklch(0.56 0.110 205);                /* #00848f */
+  --selection: oklch(0.90 0.050 205);                 /* #b8e8ee */
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-concept="a"]:not([data-theme="light"]) {
+    --brand: oklch(0.80 0.125 200);                   /* #37d6dd */
+    --brand-hover: oklch(0.86 0.110 200);             /* #6ce7ed */
+    --brand-fg: var(--n-1000);
+    --brand-subtle: oklch(0.30 0.050 210);            /* #03343c */
+    --brand-text: oklch(0.82 0.115 200);              /* #55dae1 */
+    --brand-border: oklch(0.55 0.090 205);            /* #13808a */
+    --focus-ring: oklch(0.78 0.125 200);              /* #2ccfd7 */
+    --selection: oklch(0.38 0.070 205);               /* #004c53 */
+  }
+}
+:root[data-concept="a"][data-theme="dark"] {
+  --brand: oklch(0.80 0.125 200);                     /* #37d6dd */
+  --brand-hover: oklch(0.86 0.110 200);               /* #6ce7ed */
+  --brand-fg: var(--n-1000);
+  --brand-subtle: oklch(0.30 0.050 210);              /* #03343c */
+  --brand-text: oklch(0.82 0.115 200);                /* #55dae1 */
+  --brand-border: oklch(0.55 0.090 205);              /* #13808a */
+  --focus-ring: oklch(0.78 0.125 200);                /* #2ccfd7 */
+  --selection: oklch(0.38 0.070 205);                 /* #004c53 */
+}
+
+/* ---- B "Studio": indigo, refined SaaS sans, light-first ----
+   Fonts: https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Noto+Sans+KR:wght@400;500;600;700&display=swap */
+:root[data-concept="b"] {
+  /* shape + type */
+  --radius: 8px;
+  --font-display: "Geist", "Noto Sans KR", system-ui, sans-serif;
+  --font-body: "Geist", "Noto Sans KR", var(--font-kr-fallback);
+  --font-mono: "Geist Mono", "Noto Sans KR", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* brand (info shifts toward azure to stay apart from indigo) */
+  --neutral-hue: 275;
+  --brand-hue: 277;
+  --info-hue: 232;
+  --brand: oklch(0.51 0.190 277);                     /* #5051cf */
+  --brand-hover: oklch(0.46 0.190 277);               /* #4441be */
+  --brand-fg: var(--n-0);
+  --brand-subtle: oklch(0.955 0.025 277);             /* #ecefff */
+  --brand-text: oklch(0.50 0.180 277);                /* #4e50c6 */
+  --brand-border: oklch(0.72 0.110 277);              /* #939ee9 */
+  --focus-ring: oklch(0.56 0.180 277);                /* #5e63db */
+  --selection: oklch(0.90 0.050 277);                 /* #d5dcff */
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-concept="b"]:not([data-theme="light"]) {
+    --brand: oklch(0.55 0.190 277);                   /* #5a5edd */
+    --brand-hover: oklch(0.51 0.190 277);             /* #5051cf */
+    --brand-fg: oklch(0.995 0 0);                     /* #fdfdfd */
+    --brand-subtle: oklch(0.29 0.070 277);            /* #23274d */
+    --brand-text: oklch(0.79 0.110 277);              /* #a9b4ff */
+    --brand-border: oklch(0.50 0.140 277);            /* #5157b1 */
+    --focus-ring: oklch(0.72 0.150 277);              /* #8e9aff */
+    --selection: oklch(0.38 0.100 277);               /* #363b76 */
+  }
+}
+:root[data-concept="b"][data-theme="dark"] {
+  --brand: oklch(0.55 0.190 277);                     /* #5a5edd */
+  --brand-hover: oklch(0.51 0.190 277);               /* #5051cf */
+  --brand-fg: oklch(0.995 0 0);                       /* #fdfdfd */
+  --brand-subtle: oklch(0.29 0.070 277);              /* #23274d */
+  --brand-text: oklch(0.79 0.110 277);                /* #a9b4ff */
+  --brand-border: oklch(0.50 0.140 277);              /* #5157b1 */
+  --focus-ring: oklch(0.72 0.150 277);                /* #8e9aff */
+  --selection: oklch(0.38 0.100 277);                 /* #363b76 */
+}
+
+/* ---- C "Workbench": amber, warm readable sans, balanced light/dark ----
+   Fonts: https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Atkinson+Hyperlegible+Next:wght@400..700&family=Atkinson+Hyperlegible+Mono:wght@400..600&family=Gothic+A1:wght@400;500;600;700&display=swap */
+:root[data-concept="c"] {
+  /* shape + type */
+  --radius: 10px;
+  --font-display: "Bricolage Grotesque", "Gothic A1", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible Next", "Gothic A1", var(--font-kr-fallback);
+  --font-mono: "Atkinson Hyperlegible Mono", "Gothic A1", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* brand (warning shifts toward orange to stay apart from amber) */
+  --neutral-hue: 70;
+  --brand-hue: 78;
+  --warning-hue: 48;
+  --brand: oklch(0.80 0.150 78);                      /* #f2b036 */
+  --brand-hover: oklch(0.75 0.150 72);                /* #e79c27 */
+  --brand-fg: var(--n-1000);
+  --brand-subtle: oklch(0.962 0.040 85);              /* #fff1d5 */
+  --brand-text: oklch(0.51 0.110 62);                 /* #925512 */
+  --brand-border: oklch(0.74 0.130 75);               /* #da9e3f */
+  --focus-ring: oklch(0.60 0.140 62);                 /* #b96a00 */
+  --selection: oklch(0.92 0.070 85);                  /* #fae2b0 */
+  --chart-1: oklch(0.64 0.150 65);                    /* #c67600, brand is too light for 3:1 on white */
+  --chart-3: oklch(0.55 0.150 290);                   /* #725ec2, violet since the common orange sits too close to amber */
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-concept="c"]:not([data-theme="light"]) {
+    --brand: oklch(0.80 0.150 78);                    /* #f2b036 */
+    --brand-hover: oklch(0.85 0.140 82);              /* #fbc456 */
+    --brand-fg: var(--n-1000);
+    --brand-subtle: oklch(0.30 0.055 75);             /* #3e2909 */
+    --brand-text: oklch(0.83 0.130 80);               /* #f3bd5c */
+    --brand-border: oklch(0.56 0.100 72);             /* #986a28 */
+    --focus-ring: oklch(0.80 0.150 78);               /* #f2b036 */
+    --selection: oklch(0.40 0.080 75);                /* #604008 */
+    --chart-1: var(--brand);
+    --chart-3: oklch(0.72 0.120 290);                 /* #a497ea */
+  }
+}
+:root[data-concept="c"][data-theme="dark"] {
+  --brand: oklch(0.80 0.150 78);                      /* #f2b036 */
+  --brand-hover: oklch(0.85 0.140 82);                /* #fbc456 */
+  --brand-fg: var(--n-1000);
+  --brand-subtle: oklch(0.30 0.055 75);               /* #3e2909 */
+  --brand-text: oklch(0.83 0.130 80);                 /* #f3bd5c */
+  --brand-border: oklch(0.56 0.100 72);               /* #986a28 */
+  --focus-ring: oklch(0.80 0.150 78);                 /* #f2b036 */
+  --selection: oklch(0.40 0.080 75);                  /* #604008 */
+  --chart-1: var(--brand);
+  --chart-3: oklch(0.72 0.120 290);                   /* #a497ea */
+}
+
+/* --------------------------------------------------------------------------
+   4. Reduced motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Minimal base (optional, keeps every concept page consistent)
+   -------------------------------------------------------------------------- */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-base);
+  -webkit-font-smoothing: antialiased;
+}
+:lang(ko) { word-break: keep-all; }
+::selection { background: var(--selection); }
+:focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }

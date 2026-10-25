@@ -1,0 +1,94 @@
+{
+  "skill_name": "mcp-spec-writer",
+  "notes": "Run each eval with outputs written to a scratch directory, not the repo's docs/mcp-spec/. Interview answers that the prompt does not give are answered with defaults or '확인 필요/TBD'. Results: docs/revamp/skill-evals.md.",
+  "assertion_types": {
+    "headings_all": "every listed heading prefix appears at the start of a line",
+    "contains": "substring present",
+    "regex": "pattern found at least once",
+    "korean_ratio": "Hangul characters / letters (Hangul + Latin) within [min, max]",
+    "absent": "none of the listed substrings appear",
+    "filepath_prefix": "saved path starts with value",
+    "rubric": "graded by reading the spec"
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "code-repo-mcp",
+      "prompt": "내부 GitLab 저장소를 코드리뷰 Agent에 연동하는 MCP 서버를 만들고 싶어. PR/Commit/파일/diff 조회와 변경 영향도 분석 보조 정도가 필요해. 요구사항 정의서를 작성해줘. 백엔드 인증 방식은 PAT, 배포는 내부 Kubernetes, Read-only PoC야. 부족한 정보는 질문해줘.",
+      "expected_output": "docs/mcp-spec/<server-name>_v0.1.md 형태의 한국어 정의서. 10개 섹션 모두 존재. 5장에 list_repositories / get_pr / get_file_diff / search_code 등 4~6개 Tool 명세. 각 Tool에 LLM Description(4요소) + 입출력 + 에러 표 포함. 한국어 작성 규칙(em dash, 가운뎃점 나열 없음) 준수.",
+      "files": [],
+      "assertions": [
+        {"name": "all_10_sections_present", "type": "headings_all", "values": ["## 0.", "## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 6.", "## 7.", "## 8.", "## 9.", "## 10."]},
+        {"name": "tool_summary_table_exists", "type": "contains", "value": "### 5.1 Tool 목록"},
+        {"name": "tool_detail_blocks_exist", "type": "contains", "value": "#### ▶ T-"},
+        {"name": "llm_description_block_exists", "type": "regex", "pattern": "LLM Description"},
+        {"name": "json_example_present", "type": "contains", "value": "```json"},
+        {"name": "korean_ratio_min_30pct", "type": "korean_ratio", "min": 0.3},
+        {"name": "korean_punctuation_rules", "type": "absent", "values": ["—", "·"]},
+        {"name": "saved_under_docs_mcp_spec", "type": "filepath_prefix", "value": "docs/mcp-spec/"},
+        {"name": "fastmcp_implementable_inputs", "type": "rubric", "criterion": "모든 Tool의 입력 파라미터 표에 이름/타입/필수/description 4개 칼럼이 채워져 있어 Annotated[T, Field(description=...)] 시그니처로 1:1 매핑 가능한가"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "oracle-db-mcp",
+      "prompt": "내부 Oracle 운영 DB의 메타데이터와 샘플 데이터를 데이터 분석 Agent가 조회할 수 있는 MCP 서버를 만들어줘. 테이블 목록, 스키마, 샘플 행 조회 정도. Read-only 계정 사용. 민감정보(주민번호/카드번호) 마스킹 필수. 자세한 건 물어봐줘.",
+      "expected_output": "docs/mcp-spec/<server-name>_v0.1.md 형태의 한국어 정의서. list_tables, describe_table, sample_rows 같은 Tool 명세. 6.2 보안에 민감정보 마스킹 정책 명시(_common/masking.py 정본 활용). Read-only 계정 사용 명시.",
+      "files": [],
+      "assertions": [
+        {"name": "all_10_sections_present", "type": "headings_all", "values": ["## 0.", "## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 6.", "## 7.", "## 8.", "## 9.", "## 10."]},
+        {"name": "tool_summary_table_exists", "type": "contains", "value": "### 5.1 Tool 목록"},
+        {"name": "sensitive_data_masking_mentioned", "type": "regex", "pattern": "마스킹|주민번호|카드번호"},
+        {"name": "read_only_account_mentioned", "type": "regex", "pattern": "[Rr]ead-?only|읽기 전용"},
+        {"name": "error_table_with_natural_language", "type": "contains", "value": "ACCESS_DENIED"},
+        {"name": "korean_ratio_min_30pct", "type": "korean_ratio", "min": 0.3},
+        {"name": "korean_punctuation_rules", "type": "absent", "values": ["—", "·"]},
+        {"name": "fastmcp_implementable_inputs", "type": "rubric", "criterion": "모든 Tool의 입력 파라미터 표에 이름/타입/필수/description 4개 칼럼이 채워져 있는가"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "snowflake-dw-mcp",
+      "prompt": "Snowflake DW의 테이블 카탈로그/컬럼 통계/쿼리 실행을 Agent에 제공하는 MCP 서버 정의서를 작성해줘. 비용 제어를 위해 쿼리는 row limit 강제하고 실행 시간 제한 둬야 함. PoC라서 일단 read 중심이지만 향후 확장 고려해서 설계해줘.",
+      "expected_output": "docs/mcp-spec/<server-name>_v0.1.md. list_databases, list_tables, describe_table, column_stats, run_query 같은 Tool. run_query에 row limit / timeout / 비용 가드 명시. 응답 크기 제어 명확.",
+      "files": [],
+      "assertions": [
+        {"name": "all_10_sections_present", "type": "headings_all", "values": ["## 0.", "## 1.", "## 2.", "## 3.", "## 4.", "## 5.", "## 6.", "## 7.", "## 8.", "## 9.", "## 10."]},
+        {"name": "query_tool_with_limits", "type": "regex", "pattern": "limit|timeout|TIMEOUT|행 .*건"},
+        {"name": "response_size_control_explicit", "type": "regex", "pattern": "응답 크기|cursor|TOO_LARGE|토큰"},
+        {"name": "tool_detail_blocks_exist", "type": "contains", "value": "#### ▶ T-"},
+        {"name": "llm_description_4_elements", "type": "rubric", "criterion": "각 Tool의 LLM Description이 (1)무엇 (2)언제 호출 (3)언제 호출 안 함/대체 Tool (4)호출 예시 4요소를 모두 포함하는가"},
+        {"name": "korean_ratio_min_30pct", "type": "korean_ratio", "min": 0.3},
+        {"name": "korean_punctuation_rules", "type": "absent", "values": ["—", "·"]}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "english-request-ticket-mcp",
+      "prompt": "I want an MCP server that lets our support agent look up tickets in our internal ticketing system (REST API, OAuth client credentials). Read-only for now: search tickets, get one ticket with its comments, list a customer's recent tickets. Ticket bodies and comments come from customers, so treat them as untrusted. Please write the requirements spec and ask me if anything is missing.",
+      "expected_output": "English spec saved as docs/mcp-spec/<server-name>_v0.1.md using template_v2.en.md headings verbatim (## 0. Document Info ... ## 10. Acceptance Criteria, ### 5.1 Tool List (Summary), ### 5.2 Tool Details). 3 tools (search_tickets, get_ticket, list_customer_tickets or similar) with English LLM Descriptions (4 elements), input tables, JSON examples, error tables with cause + next action. untrusted_content isolation for ticket bodies/comments in §5.2 outputs and §6.2. Unknowns marked **TBD**. Interview questions asked in English.",
+      "files": [],
+      "assertions": [
+        {"name": "english_headings", "type": "headings_all", "values": ["## 0. Document Info", "## 1. Overview", "## 2. Scope", "## 3. Users and Key Scenarios", "## 4. System Architecture", "### 4.1 MCP Server", "### 4.2 Backend Systems", "## 5. Functional Requirements (Tools)", "### 5.1 Tool List (Summary)", "### 5.2 Tool Details", "## 6. Non-functional Requirements", "## 7. Error Handling", "## 8. Deliverables", "## 9. Schedule", "## 10. Acceptance Criteria"]},
+        {"name": "tool_detail_blocks_exist", "type": "contains", "value": "#### ▶ T-"},
+        {"name": "korean_ratio_max_1pct", "type": "korean_ratio", "max": 0.01},
+        {"name": "untrusted_isolation", "type": "contains", "value": "untrusted_content"},
+        {"name": "tbd_marker_used", "type": "regex", "pattern": "\\*\\*TBD"},
+        {"name": "llm_description_4_elements", "type": "rubric", "criterion": "Each tool's LLM Description covers what, when to call, when not to call / alternative tool, and an example call"},
+        {"name": "saved_under_docs_mcp_spec", "type": "filepath_prefix", "value": "docs/mcp-spec/"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "korean-request-english-option",
+      "prompt": "내부 메타데이터 카탈로그(REST API)를 데이터 분석 Agent가 검색하는 MCP 서버 정의서를 써줘. 오픈소스로 공개할 거라 정의서는 영어로 작성해줘. 엔티티 검색과 상세 조회 두 가지면 충분해.",
+      "expected_output": "Explicit '영어로' wins: interview may be in Korean or English, but the saved spec is English with template_v2.en.md headings. 2 tools (search_entities, get_entity or similar). Korean writing rules are not applied to the English output; no Hangul in the spec.",
+      "files": [],
+      "assertions": [
+        {"name": "english_headings", "type": "headings_all", "values": ["## 0. Document Info", "## 5. Functional Requirements (Tools)", "### 5.1 Tool List (Summary)", "### 5.2 Tool Details", "## 10. Acceptance Criteria"]},
+        {"name": "korean_ratio_max_1pct", "type": "korean_ratio", "max": 0.01},
+        {"name": "two_tools", "type": "rubric", "criterion": "§5.1 lists two read-only tools covering entity search and entity detail"}
+      ]
+    }
+  ]
+}

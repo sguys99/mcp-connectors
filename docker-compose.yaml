@@ -1,0 +1,139 @@
+# 원클릭 로컬 환경 (`docker compose up`).
+#
+# 브라우저는 MCP 서버에 직접 붙지 않고 Frontend 의 프록시(/api/mcp/<name>)로 요청합니다.
+# 프록시와 Chat API 는 frontend 컨테이너 안에서 configs/mcp_servers.yaml 의 internalUrl
+# (예: http://starter-mcp:8001/mcp, compose 기본 네트워크의 서비스 이름)로 MCP 서버를 부르고,
+# MCP_API_KEY 를 X-MCP-API-Key 헤더로 붙입니다. 키는 브라우저에 내려가지 않아요.
+# MCP 서버 포트 publish(8001/8002/8004)는 CLI 와 IDE 용으로 남겨 둡니다.
+#
+# stdio transport (starter-mcp 의 stdio 변형) 는 sub-process 기반이라
+# Docker 범위 외 — IDE 통합·CLI 용도로 host 에서 그대로 사용한다.
+#
+# 환경 변수: .env 파일은 이미지에 들어가지 않는다(.dockerignore). compose 가 루트 .env 를
+# 읽어 아래 ${VAR} 를 치환하고, 컨테이너에는 environment 로만 전달한다. 로컬 실행 시
+# 서버가 직접 읽는 .env 경로 규칙은 src/mcp-servers/_common/env.py 참고.
+
+services:
+  starter-mcp:
+    build: .
+    container_name: starter-mcp
+    command: ["starter_mcp.server", "--transport", "http"]
+    environment:
+      MCP_CORS_ORIGINS: ${MCP_CORS_ORIGINS:-http://localhost:3000}
+      STARTER_MCP_PORT: "8001"
+      MCP_API_KEY: ${MCP_API_KEY:-}
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  mock-repo-mcp:
+    build: .
+    container_name: mock-repo-mcp
+    command: ["mock_repo_mcp.server", "--transport", "http"]
+    environment:
+      MCP_CORS_ORIGINS: ${MCP_CORS_ORIGINS:-http://localhost:3000}
+      MOCK_REPO_MCP_PORT: "8002"
+      MCP_API_KEY: ${MCP_API_KEY:-}
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+
+  # NL2SQL MCP. 기본은 Mock 백엔드라 DB 없이 바로 뜹니다 (Pagila 픽스처).
+  # 실 DB(샘플 Postgres)로 바꾸려면 `make nl2sql-sample-db`, 되돌리려면 `make nl2sql-mock`.
+  # 둘 다 아래 NL2SQL_CONTAINER_BACKEND 값만 바꿔 서비스를 다시 만듭니다.
+  # 감사 로그(audit.db)는 nl2sql-var 볼륨의 /app/var 에 쌓여요.
+  nl2sql-mcp:
+    build: .
+    container_name: nl2sql-mcp
+    command: ["nl2sql_mcp.server", "--transport", "http"]
+    environment:
+      MCP_CORS_ORIGINS: ${MCP_CORS_ORIGINS:-http://localhost:3000}
+      NL2SQL_MCP_PORT: "8004"
+      MCP_API_KEY: ${MCP_API_KEY:-}
+      NL2SQL_DB_DIALECT: postgres
+      NL2SQL_DB_BACKEND: ${NL2SQL_CONTAINER_BACKEND:-mock}
+      # 컨테이너 안에서는 compose 네트워크의 postgres 서비스(내부 포트 5432)로 붙습니다.
+      # 루트 .env 의 NL2SQL_PG_HOST/PORT 는 호스트에서 직접 실행할 때의 값이라 쓰지 않아요.
+      NL2SQL_PG_HOST: postgres
+      NL2SQL_PG_PORT: "5432"
+      NL2SQL_PG_DATABASE: pagila
+      NL2SQL_PG_USER: ${NL2SQL_PG_USER:-nl2sql_ro}
+      NL2SQL_PG_PASSWORD: ${NL2SQL_PG_PASSWORD:-nl2sql_ro_local_sample}
+    ports:
+      - "8004:8004"
+    volumes:
+      - nl2sql-var:/app/var
+    healthcheck:
+      # /mcp 는 GET 에 4xx 를 돌려주므로(키 설정 시 401), HTTP 응답이 오기만 하면 살아 있는 것으로 봅니다
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request, urllib.error\ntry: urllib.request.urlopen('http://127.0.0.1:8004/mcp', timeout=3)\nexcept urllib.error.HTTPError: pass"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  # NL2SQL 샘플 DB (PostgreSQL 17 + Pagila). 이것만 띄우려면 `make sample-db-up`
+  # (= docker compose up -d --wait postgres). 호스트 포트는 서버 접속 설정과 같은 NL2SQL_PG_PORT 를 따라요.
+  # 시드와 읽기 전용 계정은 볼륨이 비어 있을 때 한 번만 만들어집니다. 다시 만들려면 `make sample-db-reset`.
+  # 비밀번호 기본값은 로컬 샘플 전용입니다. 바꾸려면 루트 .env 에 같은 이름으로 적습니다
+  # (NL2SQL_PG_USER/NL2SQL_PG_PASSWORD 는 nl2sql-mcp 서버도 읽는 값이라 계정과 접속 설정이 함께 바뀝니다).
+  postgres:
+    # NL2SQL 샘플 DB 는 기본 스택에 포함하지 않습니다. make sample-db-up 또는 --profile sample-db 로 띄웁니다
+    profiles: ["sample-db"]
+    build: ./docker/postgres
+    image: mcp-connectors/pagila-postgres:17
+    container_name: mcp-connectors-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: pagila
+      POSTGRES_PASSWORD: ${PAGILA_ADMIN_PASSWORD:-pagila_admin_local_sample}
+      NL2SQL_PG_USER: ${NL2SQL_PG_USER:-nl2sql_ro}
+      NL2SQL_PG_PASSWORD: ${NL2SQL_PG_PASSWORD:-nl2sql_ro_local_sample}
+    ports:
+      - "${NL2SQL_PG_PORT:-5432}:5432"
+    volumes:
+      - pagila-data:/var/lib/postgresql/data
+    healthcheck:
+      # 초기화 중에는 임시 서버가 unix 소켓으로만 떠 있으므로 TCP(-h 127.0.0.1)로 확인합니다
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d pagila"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      # 레지스트리 yaml 과 Chat 프롬프트(configs/)를 이미지의 /app/configs 로 복사합니다 (frontend/Dockerfile)
+      additional_contexts:
+        configs: ./configs
+    container_name: mcp-connectors-frontend
+    environment:
+      # 서버 측 MCP 호출(프록시, Chat)은 internalUrl 을 씁니다
+      MCP_USE_INTERNAL_URL: "true"
+      MCP_API_KEY: ${MCP_API_KEY:-}
+      # Chat 요청에 키가 없으면 이 값을 씁니다 (Settings 에 입력한 브라우저 키가 우선)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      CHAT_ALLOW_SERVER_KEYS: ${CHAT_ALLOW_SERVER_KEYS:-false}
+      # Chat 수동 승인 토큰의 서명 키 (비우면 프로세스마다 무작위 값)
+      CHAT_APPROVAL_SECRET: ${CHAT_APPROVAL_SECRET:-}
+      # 런타임 서버 프록시(/api/mcp-runtime). 기본 꺼짐, 신뢰하는 환경에서만 true
+      MCP_ALLOW_RUNTIME_PROXY: ${MCP_ALLOW_RUNTIME_PROXY:-false}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - starter-mcp
+      - mock-repo-mcp
+      - nl2sql-mcp
+    restart: unless-stopped
+
+volumes:
+  pagila-data:
+  nl2sql-var:

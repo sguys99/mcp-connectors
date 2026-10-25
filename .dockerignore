@@ -1,0 +1,49 @@
+# 빌드 컨텍스트 최소화 — frontend 는 자체 Dockerfile 이 처리한다.
+
+.git
+.gitignore
+.github
+.vscode
+.idea
+.claude
+.cursor
+
+# Python
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov
+.coverage
+
+# Node / Frontend (각자의 Dockerfile 이 별도 컨텍스트로 빌드)
+frontend
+node_modules
+
+# 테스트·문서·로그·아카이브 (런타임 불필요)
+tests
+docs
+*.log
+
+# 런타임 데이터 (NL2SQL 감사 로그 등). 컨테이너에서는 /app/var 에 볼륨을 붙입니다
+var
+**/audit.db
+
+# 환경 파일 (compose 에서 ${VAR} 로 주입)
+.env
+**/.env
+!**/.env.example
+
+# 본 인프라 파일 자체 (이미지에 넣을 필요 없음)
+Dockerfile
+docker-compose.yaml
+README.md
+CLAUDE.md
+LICENSE
+
+# 샘플 DB 이미지(docker/postgres)는 자체 빌드 컨텍스트를 씁니다
+docker

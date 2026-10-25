@@ -1,0 +1,158 @@
+# starter-mcp 도구, 리소스, 프롬프트 시나리오 (stdio, 서버를 따로 띄울 필요 없음)
+# 실행: make test-scenarios-starter
+# 형식: docs/scenario-format.md
+version: 1
+name: starter-mcp tools, resources and prompts
+server: starter-mcp
+
+cases:
+  - id: echo-wraps-text
+    name: echo wraps the text as untrusted content
+    tags: [smoke, tools]
+    required: true
+    tool: echo
+    params: {text: hi}
+    expect:
+      checks:
+        - {field: untrusted_content.content, op: eq, value: hi}
+        - {field: metadata.length, op: eq, value: 2}
+
+  - id: echo-empty-text
+    name: echo rejects empty text
+    tags: [tools, errors]
+    tool: echo
+    params: {text: ""}
+    expect:
+      status: error
+      checks:
+        - {field: error.message, op: contains, value: text is required}
+
+  - id: add-integers
+    name: add returns the sum
+    tags: [smoke, tools]
+    required: true
+    tool: add
+    params: {a: 2, b: 3}
+    expect:
+      checks:
+        - {field: result, op: eq, value: 5}
+
+  - id: add-negative
+    name: add handles negative numbers
+    tags: [tools]
+    tool: add
+    params: {a: -4, b: 1}
+    expect:
+      checks:
+        - {field: result, op: eq, value: -3}
+
+  - id: current-time-seoul
+    name: current_time honors the timezone
+    tags: [tools]
+    tool: current_time
+    params: {tz: Asia/Seoul}
+    expect:
+      checks:
+        - {field: result, op: matches_regex, value: '\+09:00$'}
+
+  - id: current-time-unknown-tz
+    name: current_time rejects an unknown timezone
+    tags: [tools, errors]
+    tool: current_time
+    params: {tz: Nope/Zone}
+    expect:
+      status: error
+      checks:
+        - {field: error.message, op: contains, value: Unknown timezone}
+
+  - id: sample-content-blocks
+    name: sample_content returns text, image and resource blocks
+    tags: [tools, content]
+    tool: sample_content
+    params: {}
+    expect:
+      checks:
+        - {field: "[*].type", op: eq, value: [text, image, resource]}
+        - {field: "[1].mimeType", op: eq, value: image/png}
+        - {field: "[2].resource.uri", op: eq, value: "starter://about"}
+        - {field: "[0].text", op: contains, value: untrusted_content}
+
+  - id: sample-content-empty-message
+    name: sample_content rejects an empty message
+    tags: [tools, errors]
+    tool: sample_content
+    params: {message: ""}
+    expect:
+      status: error
+      checks:
+        - {field: error.message, op: contains, value: message must not be empty}
+
+  - id: resource-about
+    name: about resource is markdown
+    tags: [smoke, resources]
+    required: true
+    resource: "starter://about"
+    expect:
+      checks:
+        - {field: "contents[0].mimeType", op: eq, value: text/markdown}
+        - {field: "contents[0].text", op: contains, value: "# starter-mcp"}
+
+  - id: resource-greeting-template
+    name: greeting template fills the name and wraps it as untrusted
+    tags: [resources, template]
+    resource: "starter://greeting/Ada"
+    expect:
+      checks:
+        - {field: "contents[0].uri", op: eq, value: "starter://greeting/Ada"}
+        - {field: "contents[0].mimeType", op: eq, value: application/json}
+        - {field: "contents[0].text", op: contains, value: '"untrusted_content": {"name": "Ada"}'}
+
+  - id: resource-logo-binary
+    name: logo resource is a base64 PNG blob
+    tags: [resources, binary]
+    resource: "starter://logo.png"
+    expect:
+      checks:
+        - {field: "contents[0].mimeType", op: eq, value: image/png}
+        - {field: "contents[0].blob", op: matches_regex, value: '^iVBORw0KGgo'}
+        - {field: "contents[0].text", op: exists, value: false}
+
+  - id: resource-unknown
+    name: reading an unknown resource is an error
+    tags: [resources, errors]
+    resource: "starter://nope"
+    expect:
+      status: error
+      error_code: RESOURCE_ERROR
+
+  - id: prompt-explain-tool
+    name: explain_tool fills the required and default arguments
+    tags: [smoke, prompts]
+    required: true
+    prompt: explain_tool
+    arguments: {tool_name: echo}
+    expect:
+      checks:
+        - {field: messages | length, op: eq, value: 1}
+        - {field: "messages[0].role", op: eq, value: user}
+        - {field: "messages[0].content.text", op: contains, value: "`echo` tool"}
+        - {field: "messages[0].content.text", op: contains, value: beginner reader}
+
+  - id: prompt-explain-tool-bad-audience
+    name: explain_tool rejects an unknown audience
+    tags: [prompts, errors]
+    prompt: explain_tool
+    arguments: {tool_name: echo, audience: guru}
+    expect:
+      status: error
+      error_code: PROMPT_ERROR
+
+  - id: prompt-code-review-session
+    name: code_review_session returns user, assistant, user messages
+    tags: [prompts]
+    prompt: code_review_session
+    arguments: {language: Python, focus: security}
+    expect:
+      checks:
+        - {field: "messages[*].role", op: eq, value: [user, assistant, user]}
+        - {field: "messages[0].content.text", op: contains, value: focus on security}

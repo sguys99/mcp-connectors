@@ -1,0 +1,47 @@
+# gitleaks 설정 (plan 0-3)
+# 기본 규칙을 그대로 사용하고, 저장소 내용이 아닌 생성물 디렉토리만 제외합니다.
+title = "mcp-connectors gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "저장소 내용이 아닌 로컬 생성물(가상환경, 의존성, 빌드 산출물, git 내부)"
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''^frontend/\.next/''',
+  '''(^|/)\.git/''',
+]
+
+# 사용자 정의 규칙: 기본 규칙(generic-api-key)은 엔트로피 기준 때문에
+# `.env` 스타일의 DB 비밀번호 대입문을 놓칩니다(커밋 8d16cfd 사례). 보완용 규칙입니다.
+[[rules]]
+id = "env-password-assignment"
+description = "환경 변수 형식의 비밀번호 대입 (예: ORACLE_PASSWORD=...)"
+regex = '''(?i)\b[A-Z0-9_]*(?:PASSWORD|PASSWD|PWD)\b[ \t]*[=:][ \t]*["']?([^\s"'`|,;)]{6,})'''
+secretGroup = 1
+keywords = ["password", "passwd", "pwd"]
+
+# 오탐 허용 목록: 이 규칙에만 적용되며, 탐지된 비밀 값(secret group) 자체의 형태로만 거릅니다.
+[[rules.allowlists]]
+description = "placeholder와 코드 참조, 공개 예시 값"
+regexTarget = "secret"
+regexes = [
+  # 문서의 placeholder (예: <set-in-.env>)
+  '''^<[^<>\s]+>$''',
+  # 코드에서 설정 객체를 참조하는 경우 (예: settings.oracle_password, self._config[...])
+  '''^[A-Za-z_]\w*(?:\.\w+)+\[?$''',
+  # .env.example 의 관용 예시 값
+  '''^changeit$''',
+  # 셸/Makefile 의 변수 참조 (예: PGPASSWORD="$$NL2SQL_PG_PASSWORD"). 값이 아니라 이름입니다
+  '''^\$\$?\{?[A-Z_][A-Z0-9_]*\}?$''',
+  # 로컬 샘플 DB(docker/postgres) 전용 공개 기본값. 접미사 local_sample 로 실제 비밀과 구분합니다
+  # (예: nl2sql_ro_local_sample, compose 의 ${NL2SQL_PG_PASSWORD:-nl2sql_ro_local_sample})
+  '''^[a-z0-9_]*_local_sample$''',
+  '''^\$\{[A-Z0-9_]+:-[a-z0-9_]*_local_sample\}$''',
+  # 마스킹 결과 placeholder (Inspector redact.ts 가 비밀 값을 이 문자열로 바꿉니다)
+  '''^\[?REDACTED\]?$''',
+  # 단위 테스트 전용 가짜 값. 접미사 _test_fixture 로 실제 비밀과 구분합니다
+  '''^[a-z0-9_]*_test_fixture$''',
+]

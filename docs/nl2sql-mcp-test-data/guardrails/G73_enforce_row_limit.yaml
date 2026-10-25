@@ -1,0 +1,474 @@
+meta:
+  target: guardrail_73
+  guardrail_name: enforce_row_limit
+  error_code: null  # 이 가드레일은 에러를 발생시키지 않음 (transform only)
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+  notes: |
+    동작 규칙:
+    - SQL에 LIMIT N 절이 없으면 default N=1000 자동 주입
+    - max_rows 파라미터가 지정되면 해당 값으로 LIMIT 주입 (단, 10000 상한 적용)
+    - max_rows > 10000이면 10000으로 클램핑
+    - SQL에 이미 LIMIT이 있으면 수정하지 않음 (더 작은 값 우선 또는 SQL 그대로 사용)
+    - ANSI FETCH FIRST N ROWS ONLY 가 있으면 LIMIT 주입 생략 (PostgreSQL 도 지원)
+    - max_rows=0 또는 음수는 INVALID_INPUT 에러 예상 (구현에 따라 1로 클램핑될 수도 있음)
+    - 이 가드레일은 block 없이 항상 transform/pass → status=success가 기본
+
+tests:
+  - id: G73-001
+    category: pass
+    call_type: direct
+    title: "LIMIT 이미 있는 SELECT 그대로 통과"
+    description: "SQL에 LIMIT 10 절이 이미 있으므로 가드레일이 수정하지 않고 그대로 실행한다. 결과 row_count=10 이하."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, active FROM customer WHERE active = 1 LIMIT 10"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 10}
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, active FROM customer WHERE active = 1 LIMIT 10\", \"max_rows\": 10}"
+
+  - id: G73-002
+    category: pass
+    call_type: direct
+    title: "max_rows=100 명시, LIMIT 없음 → 100행 제한 적용"
+    description: "max_rows=100으로 명시하고 SQL에 LIMIT이 없으면 가드레일이 LIMIT 100 절을 주입하고 100행 이하로 반환한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, active FROM customer WHERE active = 1"
+        max_rows: 100
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 100}
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, active FROM customer WHERE active = 1\", \"max_rows\": 100}"
+
+  - id: G73-003
+    category: pass
+    call_type: direct
+    title: "max_rows=10000 지정, SQL에 LIMIT 5 → 5행 반환"
+    description: "SQL에 LIMIT 5 절이 있으면 max_rows=10000이어도 SQL의 LIMIT 5 절이 우선 적용되어 5행 이하로 반환된다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id FROM customer WHERE active = 1 LIMIT 5"
+        max_rows: 10000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 5}
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id FROM customer WHERE active = 1 LIMIT 5\", \"max_rows\": 10000}"
+
+  - id: G73-004
+    category: pass
+    call_type: direct
+    title: "LIMIT 1000, 테이블 16행만 존재 (category)"
+    description: "LIMIT 1000 절을 지정해도 category에는 16행밖에 없으므로 row_count<=16으로 반환된다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT category_id, name FROM category LIMIT 1000"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 16}
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT category_id, name FROM category LIMIT 1000\", \"max_rows\": 1000}"
+
+  - id: G73-005
+    category: pass
+    call_type: direct
+    title: "LIMIT 16, 테이블 전체 조회 (category)"
+    description: "category는 16행이므로 LIMIT 16으로 전체를 가져올 수 있다. row_count<=16."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT category_id, name FROM category LIMIT 16"
+        max_rows: 16
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 16}
+        - {field: "row_count", op: "gte", value: 1}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT category_id, name FROM category LIMIT 16\", \"max_rows\": 16}"
+
+  - id: G73-006
+    category: transform
+    call_type: direct
+    title: "LIMIT 없는 SELECT → LIMIT 1000 자동 주입"
+    description: >
+      LIMIT이 없는 customer SELECT에 가드레일이 LIMIT 1000 절을 자동 주입한다.
+      transform이므로 status=success이며 row_count<=1000이어야 한다.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, active FROM customer WHERE active = 1"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 1000}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, active FROM customer WHERE active = 1\", \"max_rows\": 1000}"
+
+  - id: G73-007
+    category: transform
+    call_type: direct
+    title: "집계 SELECT LIMIT 없음 → 자동 주입"
+    description: >
+      COUNT(*) 집계 쿼리에도 LIMIT이 없으면 가드레일이 자동 주입한다.
+      집계 결과는 1행이므로 row_count=1이어야 한다.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT COUNT(*) CNT FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "gte", value: 1}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT COUNT(*) CNT FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'\", \"max_rows\": 1000}"
+
+  - id: G73-008
+    category: transform
+    call_type: direct
+    title: "JOIN 쿼리 LIMIT 없음 → 자동 주입"
+    description: >
+      payment JOIN rental 쿼리에 LIMIT이 없으면 가드레일이 자동 주입한다.
+      status=success이며 row_count<=1000이어야 한다.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT p.payment_id, p.amount FROM payment p JOIN rental r ON p.rental_id = r.rental_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months'"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 1000}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT p.payment_id, p.amount FROM payment p JOIN rental r ON p.rental_id = r.rental_id WHERE p.payment_date >= CURRENT_DATE - INTERVAL '6 months'\", \"max_rows\": 1000}"
+
+  - id: G73-009
+    category: transform
+    call_type: direct
+    title: "max_rows=500 명시, LIMIT 없음 → LIMIT 500 주입"
+    description: >
+      max_rows=500으로 명시하고 LIMIT이 없으면 LIMIT 500 절이 주입된다.
+      status=success이며 row_count<=500이어야 한다.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT staff_id, username FROM staff WHERE store_id = 1"
+        max_rows: 500
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 500}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT staff_id, username FROM staff WHERE store_id = 1\", \"max_rows\": 500}"
+
+  - id: G73-010
+    category: transform
+    call_type: direct
+    title: "max_rows=99999 → 10000 클램핑 후 LIMIT 주입"
+    description: >
+      max_rows=99999은 상한(10000)을 초과하므로 10000으로 클램핑되어 LIMIT 10000 절이 주입된다.
+      status=success이며 row_count<=10000이어야 한다.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id, store_id FROM customer WHERE active = 1"
+        max_rows: 99999
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 10000}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id, store_id FROM customer WHERE active = 1\", \"max_rows\": 99999}"
+
+  - id: G73-011
+    category: block
+    call_type: direct
+    title: "max_rows=0 → INVALID_INPUT 에러"
+    description: >
+      max_rows=0은 유효하지 않은 값이므로 INVALID_INPUT 에러가 발생해야 한다.
+      구현에 따라 1로 클램핑되어 success로 처리될 수도 있음을 참고 note로 기재.
+      Note: 구현이 clamp(0→1) 방식이면 status=success, row_count<=1로 처리.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id FROM customer WHERE active = 1"
+        max_rows: 0
+    expected:
+      status: error
+      error_code: "INVALID_INPUT"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id FROM customer WHERE active = 1\", \"max_rows\": 0}"
+
+  - id: G73-012
+    category: block
+    call_type: direct
+    title: "max_rows=-1 → INVALID_INPUT 에러"
+    description: "max_rows=-1은 음수로 유효하지 않은 값이므로 INVALID_INPUT 에러가 발생해야 한다."
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id FROM customer WHERE active = 1"
+        max_rows: -1
+    expected:
+      status: error
+      error_code: "INVALID_INPUT"
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id FROM customer WHERE active = 1\", \"max_rows\": -1}"
+
+  - id: G73-013
+    category: edge
+    call_type: direct
+    title: "ANSI FETCH FIRST 구문이 있는 쿼리 (LIMIT 주입 생략)"
+    description: >
+      FETCH FIRST 5 ROWS ONLY 가 있는 쿼리는 이미 행 수 제한이 있으므로
+      가드레일이 LIMIT 주입을 생략할 수 있다. status=success이며 row_count<=5.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id FROM customer WHERE active = 1 FETCH FIRST 5 ROWS ONLY"
+        max_rows: 10
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 5}
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id FROM customer WHERE active = 1 FETCH FIRST 5 ROWS ONLY\", \"max_rows\": 10}"
+
+  - id: G73-014
+    category: edge
+    call_type: direct
+    title: "max_rows=10001 → 10000 클램핑"
+    description: >
+      max_rows=10001은 상한(10000)을 1 초과하므로 10000으로 클램핑된다.
+      LIMIT 10001 절(상한 + 1, truncated 판정용)이 주입되며 status=success. (P2-6) customer 는 작은 테이블이라 WHERE 없이도 허용
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id FROM customer"
+        max_rows: 10001
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 10000}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id FROM customer\", \"max_rows\": 10001}"
+
+  - id: G73-015
+    category: edge
+    call_type: direct
+    title: "GROUP BY 쿼리 LIMIT 없음 → 자동 주입"
+    description: >
+      GROUP BY를 포함하고 LIMIT이 없는 쿼리에도 가드레일이 LIMIT을 주입한다.
+      status=success이며 row_count<=1000.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, COUNT(*) CNT FROM rental WHERE return_date IS NULL GROUP BY customer_id"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 1000}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, COUNT(*) CNT FROM rental WHERE return_date IS NULL GROUP BY customer_id\", \"max_rows\": 1000}"
+
+  - id: G73-016
+    category: edge
+    call_type: direct
+    title: "CTE 쿼리 LIMIT 없음 → 자동 주입"
+    description: >
+      WITH 절(CTE) 쿼리에 LIMIT이 없으면 가드레일이 외부 SELECT에 LIMIT을 주입한다.
+      status=success이며 row_count<=1000.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "WITH cte AS (SELECT customer_id FROM customer WHERE active = 1) SELECT * FROM cte"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 1000}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"WITH cte AS (SELECT customer_id FROM customer WHERE active = 1) SELECT * FROM cte\", \"max_rows\": 1000}"
+
+  - id: G73-017
+    category: edge
+    call_type: direct
+    title: "max_rows=1 (최솟값), LIMIT 없음 → LIMIT 1 주입"
+    description: >
+      max_rows=1은 허용되는 최솟값이다. LIMIT이 없는 쿼리에 LIMIT 1 절이 주입된다.
+      status=success이며 row_count<=1.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT customer_id, address_id FROM customer WHERE active = 1"
+        max_rows: 1
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 1}
+        - {field: "row_count", op: "gte", value: 0}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT customer_id, address_id FROM customer WHERE active = 1\", \"max_rows\": 1}"
+
+  - id: G73-018
+    category: edge
+    call_type: direct
+    title: "소형 테이블(category, 16행) LIMIT 없음 → 주입 후 실제 16행 이하 반환"
+    description: >
+      category 테이블은 16행만 존재한다. LIMIT 없으면 LIMIT 1000이 주입되지만
+      실제 반환 row_count는 16 이하(테이블 전체)여야 한다.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT category_id, name FROM category WHERE category_id > 0"
+        max_rows: 1000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 16}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT category_id, name FROM category WHERE category_id > 0\", \"max_rows\": 1000}"
+
+  - id: G73-019
+    category: edge
+    call_type: direct
+    title: "대량 결과 테이블, max_rows=100 → 100행 절단 확인"
+    description: >
+      payment는 14,596행 테이블이다. max_rows=100으로 LIMIT 100이 주입되면
+      정확히 100행이 반환되고 truncated=true여야 한다 (더 많은 결과가 있으므로).
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT payment_id, amount FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'"
+        max_rows: 100
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 100}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT payment_id, amount FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'\", \"max_rows\": 100}"
+
+  - id: G73-020
+    category: edge
+    call_type: direct
+    title: "max_rows=10000 상한값, 대량 결과 → 10000행 절단 확인"
+    description: >
+      max_rows=10000(상한값)으로 LIMIT 10000이 주입된다.
+      payment에서 대량 결과가 있으면 row_count<=10000이고 truncated 필드가 존재해야 한다.
+    input:
+      tool: run_sql_query
+      params:
+        sql: "SELECT payment_id, rental_id, amount, staff_id FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'"
+        max_rows: 10000
+    expected:
+      status: success
+      checks:
+        - {field: "row_count", op: "lte", value: 10000}
+        - {field: "row_count", op: "gte", value: 0}
+        - {field: "truncated", op: "not_null"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool run_sql_query \
+          --params "{\"sql\": \"SELECT payment_id, rental_id, amount, staff_id FROM payment WHERE payment_date >= CURRENT_DATE - INTERVAL '6 months'\", \"max_rows\": 10000}"

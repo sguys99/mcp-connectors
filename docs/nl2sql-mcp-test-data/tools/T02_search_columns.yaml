@@ -1,0 +1,398 @@
+meta:
+  target: search_columns
+  db_mode: real
+  total: 20
+  dialect: postgres  # SQL 문법 기준. 서버 NL2SQL_DB_DIALECT 기본값과 같아야 합니다
+  mcp_server: nl2sql-mcp
+  base_url: "http://localhost:8004/mcp"
+  cli_server: nl2sql-mcp
+
+# 기준 스키마: Pagila (public), 전체 컬럼 131개. column_pattern 은 SQL LIKE 전체 일치(대소문자 비구분)이며
+# '_' 는 한 글자 와일드카드다. 기대 match 수는 Mock 카탈로그를 직접 조회해 맞췄다.
+
+tests:
+  - id: T02-001
+    category: positive
+    call_type: direct
+    title: "AMOUNT 컬럼 검색 → payment.amount 1건"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "AMOUNT"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 1}
+        - {field: "columns[*].column_name", op: "contains_any", value: ["amount"]}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["payment"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "AMOUNT", "limit": 50}'
+
+  - id: T02-002
+    category: positive
+    call_type: direct
+    title: "CUSTOMER_ID 컬럼 검색 → PK, FK 포함 3개 테이블 발견"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "CUSTOMER_ID"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 3}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["customer", "payment", "rental"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "CUSTOMER_ID", "limit": 50}'
+
+  - id: T02-003
+    category: positive
+    call_type: direct
+    title: "ACTIVE 컬럼 검색 → customer, staff 에서 발견"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "ACTIVE"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 2}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["customer", "staff"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "ACTIVE", "limit": 50}'
+
+  - id: T02-004
+    category: positive
+    call_type: direct
+    title: "EMAIL 컬럼 검색 → customer.email, staff.email (PII 컬럼)"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "EMAIL"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 2}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["customer", "staff"]}
+        - {field: "columns[*].column_name", op: "contains_any", value: ["email"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "EMAIL", "limit": 50}'
+
+  - id: T02-005
+    category: positive
+    call_type: direct
+    title: "%_DATE 패턴으로 날짜 컬럼 검색 ('_' 와일드카드라 last_update 14건도 함께 매칭)"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "%_DATE"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 18}
+        - {field: "columns[*].column_name", op: "contains_all", value: ["rental_date", "return_date", "payment_date", "create_date", "last_update"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "%_DATE", "limit": 50}'
+
+  - id: T02-006
+    category: positive
+    call_type: direct
+    title: "PASSWORD 컬럼 검색 → staff.password (PII 컬럼) 1건"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "PASSWORD"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 1}
+        - {field: "columns[0].table_name", op: "eq", value: "staff"}
+        - {field: "columns[0].column_name", op: "eq", value: "password"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "PASSWORD", "limit": 50}'
+
+  - id: T02-007
+    category: negative
+    call_type: direct
+    title: "% 와일드카드 + limit=5 → TOO_MANY_COLUMNS (131 > 5)"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "%"
+        limit: 5
+    expected:
+      status: error
+      error_code: "TOO_MANY_COLUMNS"
+      checks:
+        - {field: "error.code", op: "eq", value: "TOO_MANY_COLUMNS"}
+        - {field: "error.message", op: "contains", value: "(131)"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "%", "limit": 5}'
+
+  - id: T02-008
+    category: negative
+    call_type: direct
+    title: "존재하지 않는 컬럼 패턴 → match_count=0, 빈 결과"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "NONEXISTENT_COL_XYZ_123"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 0}
+        - {field: "columns", op: "eq", value: []}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "NONEXISTENT_COL_XYZ_123", "limit": 50}'
+
+  - id: T02-009
+    category: negative
+    call_type: direct
+    title: "LAST_UPDATE + limit=10 → TOO_MANY_COLUMNS (테이블 14개 공통 컬럼)"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "LAST_UPDATE"
+        limit: 10
+    expected:
+      status: error
+      error_code: "TOO_MANY_COLUMNS"
+      checks:
+        - {field: "error.code", op: "eq", value: "TOO_MANY_COLUMNS"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "LAST_UPDATE", "limit": 10}'
+
+  - id: T02-010
+    category: negative
+    call_type: direct
+    title: "limit=201 → 에러 없이 200으로 클램핑, 전체 131개 반환 (현재 구현 동작)"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "%"
+        limit: 201
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 131}
+        - {field: "truncated", op: "eq", value: false}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "%", "limit": 201}'
+
+  - id: T02-011
+    category: edge
+    call_type: direct
+    title: "대문자 패턴 'ID' → 대소문자 비구분으로 뷰의 id 컬럼 2건 반환"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "ID"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 2}
+        - {field: "columns[*].column_name", op: "contains_any", value: ["id"]}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["customer_list", "staff_list"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "ID", "limit": 50}'
+
+  - id: T02-012
+    category: edge
+    call_type: direct
+    title: "%_ID 패턴으로 PK, FK 컬럼 40건 검색"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "%_ID"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 40}
+        - {field: "columns[*].column_name", op: "contains_all", value: ["customer_id", "rental_id", "staff_id"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "%_ID", "limit": 50}'
+
+  - id: T02-013
+    category: edge
+    call_type: direct
+    title: "LAST_NAME 컬럼 검색 → customer 외에 actor, staff, actor_info 에도 있는 PII 컬럼"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "LAST_NAME"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 4}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["actor", "actor_info", "customer", "staff"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "LAST_NAME", "limit": 50}'
+
+  - id: T02-014
+    category: edge
+    call_type: direct
+    title: "RATING 컬럼 검색 → film 과 영화 목록 뷰 2개"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "RATING"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 3}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["film", "film_list", "nicer_but_slower_film_list"]}
+        - {field: "columns[*].column_name", op: "contains_any", value: ["rating"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "RATING", "limit": 50}'
+
+  - id: T02-015
+    category: edge
+    call_type: direct
+    title: "PHONE 컬럼 검색 → PII 컬럼이 address 와 목록 뷰에서 노출되는지 확인 (customer 에는 없음)"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "PHONE"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 3}
+        - {field: "columns[*].table_name", op: "contains_all", value: ["address", "customer_list", "staff_list"]}
+        - {field: "columns[*].column_name", op: "contains_any", value: ["phone"]}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "PHONE", "limit": 50}'
+
+  - id: T02-016
+    category: edge
+    call_type: direct
+    title: "CATEGORY_ID 컬럼 검색 → category 와 film_category 2건"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "CATEGORY_ID"
+        limit: 50
+    expected:
+      status: success
+      checks:
+        - {field: "match_count", op: "eq", value: 2}
+        - {field: "columns[0].table_name", op: "eq", value: "category"}
+        - {field: "columns[0].column_name", op: "eq", value: "category_id"}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "CATEGORY_ID", "limit": 50}'
+
+  - id: T02-017
+    category: edge
+    call_type: direct
+    title: "limit=1 최솟값 + % → TOO_MANY_COLUMNS"
+    input:
+      tool: search_columns
+      params:
+        column_pattern: "%"
+        limit: 1
+    expected:
+      status: error
+      error_code: "TOO_MANY_COLUMNS"
+      checks:
+        - {field: "error.code", op: "eq", value: "TOO_MANY_COLUMNS"}
+        - {field: "error.message", op: "matches_regex", value: '\((?:[2-9]|[1-9][0-9]+)\)'}
+    execution:
+      command: |
+        python scripts/mcp_cli.py call --server nl2sql-mcp \
+          --tool search_columns \
+          --params '{"column_pattern": "%", "limit": 1}'
+
+  - id: T02-018
+    category: chat
+    call_type: chat
+    title: "자연어로 결제 금액 컬럼 위치 검색 요청"
+    chat_prompt: "결제 금액 컬럼이 어느 테이블에 있는지 찾아줘"
+    expected:
+      tool_called: search_columns
+      status: success
+      human_verify: "응답에 payment.amount 컬럼 정보가 포함되어 있는지 확인. LLM이 column_pattern='AMOUNT' 또는 '%AMOUNT%'를 사용했는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T02-019
+    category: chat
+    call_type: chat
+    title: "자연어로 고객 이메일 컬럼 검색 요청"
+    chat_prompt: "고객 이메일 컬럼 찾아줘"
+    expected:
+      tool_called: search_columns
+      status: success
+      human_verify: "응답에 customer.email 컬럼이 포함되어 있는지 확인. PII 여부가 응답에 명시되는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"
+
+  - id: T02-020
+    category: chat
+    call_type: chat
+    title: "자연어로 날짜 관련 컬럼 검색 요청"
+    chat_prompt: "날짜 관련 컬럼들이 어디에 있어?"
+    expected:
+      tool_called: search_columns
+      status: success
+      human_verify: "응답에 rental_date, return_date, payment_date, create_date 등 날짜 컬럼이 포함되어 있는지 확인. LLM이 %_DATE 또는 %DATE% 패턴을 사용했는지 확인."
+    execution:
+      method: "Frontend /chat 페이지에서 nl2sql-mcp 서버 연결 후 프롬프트 입력"

@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mcp-connectors/scenario.schema.json",
+  "title": "MCP scenario",
+  "description": "Scenario file run by `scripts/mcp_cli.py test`. See docs/scenario-format.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cases"
+  ],
+  "properties": {
+    "version": {
+      "const": 1,
+      "default": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "server": {
+      "type": "string",
+      "description": "Server name in configs/mcp_servers.yaml. --server overrides it."
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeout": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 60,
+          "description": "Per-case timeout in seconds."
+        },
+        "env": {
+          "$ref": "#/$defs/env"
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    }
+  },
+  "$defs": {
+    "env": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean",
+          "null"
+        ]
+      },
+      "description": "Environment variables for the stdio server process. Ignored for HTTP servers."
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op"
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Path such as 'result', 'a[0].b', 'a[*].b', 'a | length'."
+        },
+        "op": {
+          "enum": [
+            "contains",
+            "contains_all",
+            "contains_any",
+            "contains_field",
+            "eq",
+            "exists",
+            "gt",
+            "gte",
+            "in",
+            "is_null",
+            "length_eq",
+            "length_gte",
+            "length_lte",
+            "lt",
+            "lte",
+            "matches_regex",
+            "ne",
+            "not_contains",
+            "not_empty",
+            "not_in",
+            "not_null",
+            "note"
+          ]
+        },
+        "value": {}
+      },
+      "if": {
+        "properties": {
+          "op": {
+            "not": {
+              "const": "note"
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "field"
+        ]
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "success",
+            "error",
+            "any"
+          ],
+          "default": "success"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Tool name (tools/call)."
+        },
+        "params": {
+          "type": "object",
+          "description": "Tool arguments. Only with 'tool'."
+        },
+        "resource": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Resource URI (resources/read)."
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prompt name (prompts/get)."
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Prompt arguments. Only with 'prompt'."
+        },
+        "expect": {
+          "$ref": "#/$defs/expect"
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Repeat the call; the last response is judged."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "tool"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "resource"
+                ]
+              },
+              {
+                "required": [
+                  "prompt"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "resource"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "tool"
+                ]
+              },
+              {
+                "required": [
+                  "prompt"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "prompt"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "tool"
+                ]
+              },
+              {
+                "required": [
+                  "resource"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Tool name (tools/call)."
+        },
+        "params": {
+          "type": "object",
+          "description": "Tool arguments. Only with 'tool'."
+        },
+        "resource": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Resource URI (resources/read)."
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prompt name (prompts/get)."
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Prompt arguments. Only with 'prompt'."
+        },
+        "expect": {
+          "$ref": "#/$defs/expect"
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Repeat the call; the last response is judged."
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique within the file. Defaults to case-N."
+        },
+        "name": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Must pass or the run fails."
+        },
+        "skip": {
+          "type": [
+            "string",
+            "boolean"
+          ],
+          "description": "Reason string (or true) to skip."
+        },
+        "env": {
+          "$ref": "#/$defs/env"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "steps"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "tool"
+                ]
+              },
+              {
+                "required": [
+                  "resource"
+                ]
+              },
+              {
+                "required": [
+                  "prompt"
+                ]
+              },
+              {
+                "required": [
+                  "params"
+                ]
+              },
+              {
+                "required": [
+                  "arguments"
+                ]
+              },
+              {
+                "required": [
+                  "expect"
+                ]
+              },
+              {
+                "required": [
+                  "repeat"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "steps"
+            ]
+          },
+          "oneOf": [
+            {
+              "required": [
+                "tool"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "resource"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "prompt"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "required": [
+                "resource"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "tool"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "prompt"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "required": [
+                "prompt"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "tool"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "resource"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

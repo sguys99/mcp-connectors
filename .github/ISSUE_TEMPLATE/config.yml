@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/sguys99/mcp-connectors/security/policy
+    about: Please do not open a public issue for security problems. Follow the security policy to report privately.
+  - name: Contributing guide
+    url: https://github.com/sguys99/mcp-connectors/blob/main/CONTRIBUTING.md
+    about: Development setup, conventions, and the checks to run before a pull request.
