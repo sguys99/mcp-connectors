@@ -117,6 +117,8 @@ export function TitleBar({ drawerOpen, drawerId, onMenu }: TitleBarProps) {
       >
         <SearchIcon aria-hidden className="size-3.5 flex-none" />
         <span className="min-w-0 flex-1 truncate text-left max-[901px]:hidden">{t("shell.paletteHint")}</span>
+        {/* 공백 글자: 접근성 검사와 보조 기술이 "servers"와 "Ctrl K"를 붙여 읽지 않게 한다 (flex 안이라 화면에는 영향 없음). */}
+        {" "}
         <Kbd className="flex-none max-[901px]:hidden">{paletteKeys}</Kbd>
       </button>
 

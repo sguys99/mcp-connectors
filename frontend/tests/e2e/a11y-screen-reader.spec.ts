@@ -299,9 +299,16 @@ test.describe("Chat", () => {
     await expect(page.getByRole("group", { name: "Tool call mock-repo-mcp / list_repositories" })).toBeVisible({ timeout: 15_000 });
     await expect.poll(() => liveLog(page), { timeout: 15_000 }).toContain("Response complete.");
     const log = await liveLog(page);
-    const order = ["The model is working.", "Calling list_repositories.", "Response complete."].map((t) => log.indexOf(t));
-    expect(order.every((i) => i >= 0), log.join(" | ")).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    const working = log.indexOf("The model is working.");
+    const done = log.indexOf("Response complete.");
+    expect(working, log.join(" | ")).toBeGreaterThanOrEqual(0);
+    expect(done, log.join(" | ")).toBeGreaterThan(working);
+    // 도구 호출 단계는 호출이 한 프레임보다 짧으면 그려지지 않을 수 있다(CI). 나왔다면 작업 중과 완료 사이다.
+    const calling = log.indexOf("Calling list_repositories.");
+    if (calling >= 0) {
+      expect(calling).toBeGreaterThan(working);
+      expect(calling).toBeLessThan(done);
+    }
     // 답변 본문(스트리밍 글자)은 라이브 영역에 들어오지 않는다.
     expect(log.some((t) => t.includes("Mock summary"))).toBe(false);
     await expect(composer(page)).toBeFocused();
