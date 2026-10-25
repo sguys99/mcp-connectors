@@ -58,6 +58,7 @@ async def test_list_repositories_negative_limit_raises(mcp_client: Client) -> No
     with pytest.raises(ToolError) as exc_info:
         await mcp_client.call_tool("list_repositories", {"limit": -1})
     assert "limit must be >= 0" in str(exc_info.value)
+    assert "[INVALID_INPUT]" in str(exc_info.value)
 
 
 # ---------- get_file_content ----------
@@ -87,7 +88,7 @@ async def test_get_file_content_not_found_raises(mcp_client: Client) -> None:
         await mcp_client.call_tool(
             "get_file_content", {"repository_id": "repo-alpha", "path": "no-such-file.txt"}
         )
-    assert "FILE_NOT_FOUND" in str(exc_info.value)
+    assert str(exc_info.value).endswith("[FILE_NOT_FOUND]")
 
 
 # ---------- search_code ----------
@@ -130,3 +131,4 @@ async def test_search_code_empty_query_raises(mcp_client: Client) -> None:
     with pytest.raises(ToolError) as exc_info:
         await mcp_client.call_tool("search_code", {"query": ""})
     assert "query must not be empty" in str(exc_info.value)
+    assert "[INVALID_INPUT]" in str(exc_info.value)

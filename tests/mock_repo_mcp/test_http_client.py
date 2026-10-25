@@ -84,7 +84,7 @@ async def test_404_is_not_found_without_retry():
         calls["n"] += 1
         return httpx.Response(404)
 
-    with pytest.raises(NotFoundError, match="FILE_NOT_FOUND: repo-alpha:missing.py"):
+    with pytest.raises(NotFoundError, match=r"File not found: repo-alpha:missing.py \[FILE_NOT_FOUND\]"):
         await _client(handler).get_file_content("repo-alpha", "missing.py", None)
     assert calls["n"] == 1
 
@@ -99,3 +99,76 @@ async def test_other_4xx_is_backend_unavailable_without_retry():
     with pytest.raises(BackendUnavailableError, match="HTTP 403"):
         await _client(handler).search_code("q", None, 1)
     assert calls["n"] == 1
+
+
+async def test_http_client_is_created_once_and_reused():
+    """여러 호출이 같은 httpx.AsyncClient 를 공유한다 (호출마다 만들지 않음)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"matches": []})
+
+    client = _client(handler)
+    assert client._http is None  # 첫 호출 전에는 만들지 않는다
+    await client.search_code("q", None, 1)
+    first = client._http
+    await client.search_code("q", None, 1)
+    assert first is not None
+    assert client._http is first
+
+
+async def test_close_closes_shared_client_and_is_idempotent():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"matches": []})
+
+    client = _client(handler)
+    await client.search_code("q", None, 1)
+    shared = client._http
+    assert shared is not None
+    await client.close()
+    assert shared.is_closed
+    assert client._http is None
+    await client.close()  # 두 번 불러도 안전
+
+
+async def test_call_after_close_recreates_client():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"matches": []})
+
+    client = _client(handler)
+    await client.search_code("q", None, 1)
+    await client.close()
+    assert await client.search_code("q", None, 1) == []
+    assert client._http is not None
+    assert not client._http.is_closed
+
+
+async def test_retry_reuses_same_client_across_attempts():
+    """재시도는 같은 클라이언트로 이어지고 시도 횟수는 그대로다."""
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(503) if calls["n"] < 3 else httpx.Response(200, json={"matches": []})
+
+    client = _client(handler, max_attempts=3)
+    assert await client.search_code("q", None, 1) == []
+    assert calls["n"] == 3
+
+
+async def test_server_lifespan_closes_tools_client(monkeypatch):
+    """서버 lifespan 종료 시 tools 의 백엔드 close() 가 호출된다."""
+    from fastmcp import Client
+
+    from mock_repo_mcp import tools
+    from mock_repo_mcp.server import mcp
+
+    closed = {"n": 0}
+
+    class _Fake:
+        async def close(self) -> None:
+            closed["n"] += 1
+
+    monkeypatch.setattr(tools, "_client", _Fake())
+    async with Client(mcp):
+        assert closed["n"] == 0
+    assert closed["n"] == 1

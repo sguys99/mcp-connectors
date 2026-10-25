@@ -160,3 +160,4 @@ async def test_sample_content_empty_message_raises(mcp_client: Client) -> None:
     with pytest.raises(ToolError) as exc_info:
         await mcp_client.call_tool("sample_content", {"message": ""})
     assert "message must not be empty" in str(exc_info.value)
+    assert "[INVALID_INPUT]" in str(exc_info.value)

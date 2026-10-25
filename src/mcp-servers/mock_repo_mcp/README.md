@@ -5,7 +5,7 @@ A code repository server with three read tools, backed by local fixtures by defa
 ## What it is for
 
 - **Learning step 2.** It adds what `starter_mcp` leaves out: a backend client behind a `Protocol`, a mock implementation you can swap for a real one, pagination, empty results and not-found errors.
-- **Swappable backend.** `tools.py` depends only on `BackendClient`. `MockBackendClient` reads `fixtures/`; `HttpBackendClient` calls a REST API with retries. Setting `MOCK_REPO_BACKEND_URL` switches between them, so you can follow the same shape when you connect a real internal system.
+- **Swappable backend.** `tools.py` depends only on `BackendClient`. `MockBackendClient` reads `fixtures/`; `HttpBackendClient` calls a REST API with retries. `HttpBackendClient` creates its `httpx.AsyncClient` on the first call, reuses it, and the server lifespan closes it on shutdown. Setting `MOCK_REPO_BACKEND_URL` switches between them, so you can follow the same shape when you connect a real internal system.
 - **Trust boundary example.** File contents are external text and are returned inside `untrusted_content`.
 - **Demo and E2E target.** The Inspector and Chat demos use it, and `make test-e2e` starts it automatically for Playwright.
 
@@ -16,7 +16,7 @@ The server exposes tools only (no resources or prompts).
 | Tool | Arguments | Behavior |
 |---|---|---|
 | `list_repositories` | `name_pattern: str \| None = None`, `limit: int = 20`, `offset: int = 0` | Returns `{"repositories": [...], "total_count": N}`. `name_pattern` is a case-insensitive substring match on the repository name. `total_count` counts all matches before paging. A negative `limit` or `offset` raises `InvalidInputError`. |
-| `get_file_content` | `repository_id: str`, `path: str`, `revision: str \| None = None` | Returns `{"metadata": {"path", "revision", "size"}, "untrusted_content": {"content"}}`. `size` is the UTF-8 byte length. A missing file raises `NotFoundError` with `FILE_NOT_FOUND: <repo>:<path>`. The mock ignores `revision`. |
+| `get_file_content` | `repository_id: str`, `path: str`, `revision: str \| None = None` | Returns `{"metadata": {"path", "revision", "size"}, "untrusted_content": {"content"}}`. `size` is the UTF-8 byte length. A missing file raises `NotFoundError` with `File not found: <repo>:<path> [FILE_NOT_FOUND]`. The mock ignores `revision`. |
 | `search_code` | `query: str`, `repository_id: str \| None = None`, `limit: int = 50` | Returns `{"matches": [{"repository_id", "path", "line_number", "preview"}]}`. The mock does a case-sensitive substring match per line and stops at `limit`. Empty `query` or negative `limit` raises `InvalidInputError`. |
 
 Each tool logs its call with a `params_hash` field (`_common.logging.hash_params`) instead of raw parameters.
@@ -108,7 +108,7 @@ A missing path returns an error object:
 
 ```bash
 uv run python scripts/mcp_cli.py call --server mock-repo-mcp --tool get_file_content --params '{"repository_id":"repo-alpha","path":"nope.md"}'
-# {"error": {"code": "TOOL_ERROR", "message": "FILE_NOT_FOUND: repo-alpha:nope.md"}}
+# {"error": {"code": "FILE_NOT_FOUND", "message": "File not found: repo-alpha:nope.md [FILE_NOT_FOUND]"}}
 ```
 
 ## Testing
@@ -123,7 +123,7 @@ make test-e2e             # Frontend Playwright E2E, starts mock-repo-mcp itself
 |---|---|
 | `tests/mock_repo_mcp/conftest.py` | FastMCP in-memory `Client` fixture |
 | `tests/mock_repo_mcp/test_tools.py` | Success, `FILE_NOT_FOUND`, empty results, pagination |
-| `tests/mock_repo_mcp/test_http_client.py` | `HttpBackendClient` with `httpx.MockTransport`: retries and error mapping |
+| `tests/mock_repo_mcp/test_http_client.py` | `HttpBackendClient` with `httpx.MockTransport`: retries, error mapping, client reuse and close |
 | `tests/mock_repo_mcp/test_mcp_contract.py` | `list_tools` and `inputSchema` contract |
 
 `tests/mock_repo_mcp/` has no `__init__.py` on purpose (it would clash with the package name; pytest uses `--import-mode=importlib`).

@@ -24,6 +24,7 @@ cases:
     params: {text: ""}
     expect:
       status: error
+      error_code: INVALID_INPUT
       checks:
         - {field: error.message, op: contains, value: text is required}
 
@@ -62,6 +63,7 @@ cases:
     params: {tz: Nope/Zone}
     expect:
       status: error
+      error_code: INVALID_INPUT
       checks:
         - {field: error.message, op: contains, value: Unknown timezone}
 
@@ -84,6 +86,7 @@ cases:
     params: {message: ""}
     expect:
       status: error
+      error_code: INVALID_INPUT
       checks:
         - {field: error.message, op: contains, value: message must not be empty}
 
@@ -145,7 +148,7 @@ cases:
     arguments: {tool_name: echo, audience: guru}
     expect:
       status: error
-      error_code: PROMPT_ERROR
+      error_code: INVALID_INPUT
 
   - id: prompt-code-review-session
     name: code_review_session returns user, assistant, user messages

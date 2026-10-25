@@ -116,9 +116,11 @@ def greeting(name: str) -> ResourceResult:
     """
     name = name.strip()
     if not name:
-        raise InvalidInputError("name is required")
+        raise InvalidInputError("name is required [INVALID_INPUT]")
     if len(name) > GREETING_MAX_NAME_LENGTH:
-        raise InvalidInputError(f"name must be at most {GREETING_MAX_NAME_LENGTH} characters")
+        raise InvalidInputError(
+            f"name must be at most {GREETING_MAX_NAME_LENGTH} characters [INVALID_INPUT]"
+        )
     payload = wrap_untrusted(
         metadata={"greeting": "Hello", "name_length": len(name)},
         untrusted_content={"name": name},
@@ -144,7 +146,7 @@ def explain_tool(
     ``str`` 을 반환하면 FastMCP 가 user 메시지 1 개로 감싼다.
     """
     if audience not in ("beginner", "expert"):
-        raise InvalidInputError("audience must be 'beginner' or 'expert'")
+        raise InvalidInputError("audience must be 'beginner' or 'expert' [INVALID_INPUT]")
     return (
         f"Explain what the `{tool_name}` tool does, when to call it, and what its output looks like. "
         f"Write for a {audience} reader and finish with one concrete example call."

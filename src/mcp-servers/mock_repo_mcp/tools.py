@@ -33,6 +33,13 @@ def _build_client() -> BackendClient:
 _client: BackendClient = _build_client()
 
 
+async def close_client() -> None:
+    """백엔드에 ``close()`` 가 있으면 호출합니다(HTTP 클라이언트 정리). 서버 lifespan 종료에서 씁니다."""
+    close = getattr(_client, "close", None)
+    if close is not None:
+        await close()
+
+
 async def list_repositories(
     name_pattern: str | None = None,
     limit: int = 20,
@@ -52,9 +59,9 @@ async def list_repositories(
         InvalidInputError: If ``limit`` or ``offset`` is negative.
     """
     if limit < 0:
-        raise InvalidInputError(f"limit must be >= 0, got {limit}")
+        raise InvalidInputError(f"limit must be >= 0, got {limit} [INVALID_INPUT]")
     if offset < 0:
-        raise InvalidInputError(f"offset must be >= 0, got {offset}")
+        raise InvalidInputError(f"offset must be >= 0, got {offset} [INVALID_INPUT]")
     logger.info(
         "list_repositories called",
         extra={
@@ -118,9 +125,9 @@ async def search_code(
         InvalidInputError: If ``query`` is an empty string or ``limit`` is negative.
     """
     if query == "":
-        raise InvalidInputError("query must not be empty")
+        raise InvalidInputError("query must not be empty [INVALID_INPUT]")
     if limit < 0:
-        raise InvalidInputError(f"limit must be >= 0, got {limit}")
+        raise InvalidInputError(f"limit must be >= 0, got {limit} [INVALID_INPUT]")
     logger.info(
         "search_code called",
         extra={

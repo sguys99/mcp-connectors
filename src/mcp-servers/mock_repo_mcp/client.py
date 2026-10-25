@@ -9,8 +9,9 @@
   ``MOCK_REPO_BACKEND_URL`` 을 설정했을 때만 쓰입니다.
 
 ``tools.py`` 는 모듈 로드 시점에 ``MOCK_REPO_BACKEND_URL`` 유무로 두 구현 중 하나를
-싱글톤으로 보관하며 (기본은 ``MockBackendClient``), 테스트는 ``monkeypatch`` 또는
-새 ``MockBackendClient`` 직접 호출로 주입한다.
+싱글톤으로 보관하며 (기본은 ``MockBackendClient``), ``HttpBackendClient`` 의 httpx 클라이언트는
+첫 호출에서 만들어 재사용하고 서버 lifespan 종료 시 ``close()`` 로 닫습니다.
+테스트는 ``monkeypatch`` 또는 새 ``MockBackendClient`` 직접 호출로 주입한다.
 """
 
 from __future__ import annotations
@@ -108,7 +109,7 @@ class MockBackendClient:
     ) -> tuple[str, int]:
         key = (repository_id, path)
         if key not in self._files:
-            raise NotFoundError(f"FILE_NOT_FOUND: {repository_id}:{path}")
+            raise NotFoundError(f"File not found: {repository_id}:{path} [FILE_NOT_FOUND]")
         content = self._files[key]
         return content, len(content.encode("utf-8"))
 
@@ -185,29 +186,43 @@ class HttpBackendClient:
         self._max_attempts = max_attempts
         self._initial_wait = initial_wait
         self._transport = transport
+        # 호출마다 만들지 않고 첫 호출에서 한 번 만들어 재사용합니다(연결 풀 공유).
+        self._http: httpx.AsyncClient | None = None
+
+    def _get_http(self) -> httpx.AsyncClient:
+        """공유 AsyncClient 를 돌려줍니다. 없거나 닫혔으면 새로 만듭니다."""
+        if self._http is None or self._http.is_closed:
+            self._http = httpx.AsyncClient(
+                base_url=self._base_url, timeout=self._timeout, transport=self._transport
+            )
+        return self._http
+
+    async def close(self) -> None:
+        """공유 AsyncClient 를 닫습니다. 서버 lifespan 종료 시 호출하며 여러 번 불러도 안전합니다."""
+        if self._http is not None:
+            await self._http.aclose()
+            self._http = None
 
     async def _get_json(self, path: str, params: dict[str, Any]) -> Any:
         query = {k: v for k, v in params.items() if v is not None}
+        http = self._get_http()
         try:
-            async with httpx.AsyncClient(
-                base_url=self._base_url, timeout=self._timeout, transport=self._transport
-            ) as http:
-                async for attempt in with_backoff(
-                    max_attempts=self._max_attempts,
-                    initial_wait=self._initial_wait,
-                    retry_on=(httpx.TransportError, _RetryableStatusError),
-                ):
-                    with attempt:
-                        response = await http.get(path, params=query)
-                        if response.status_code >= 500 or response.status_code == 429:
-                            raise _RetryableStatusError(response)
+            async for attempt in with_backoff(
+                max_attempts=self._max_attempts,
+                initial_wait=self._initial_wait,
+                retry_on=(httpx.TransportError, _RetryableStatusError),
+            ):
+                with attempt:
+                    response = await http.get(path, params=query)
+                    if response.status_code >= 500 or response.status_code == 429:
+                        raise _RetryableStatusError(response)
         except (httpx.TransportError, _RetryableStatusError) as e:
             raise BackendUnavailableError(
                 f"Repository backend call failed: {e} [BACKEND_UNAVAILABLE]"
             ) from e
 
         if response.status_code == 404:
-            raise NotFoundError(f"NOT_FOUND: {path}")
+            raise NotFoundError(f"Resource not found: {path} [NOT_FOUND]")
         if response.is_error:
             raise BackendUnavailableError(
                 f"Repository backend returned an error: HTTP {response.status_code} "
@@ -239,7 +254,7 @@ class HttpBackendClient:
                 {"path": path, "revision": revision},
             )
         except NotFoundError as e:
-            raise NotFoundError(f"FILE_NOT_FOUND: {repository_id}:{path}") from e
+            raise NotFoundError(f"File not found: {repository_id}:{path} [FILE_NOT_FOUND]") from e
         content = data["content"]
         return content, len(content.encode("utf-8"))
 

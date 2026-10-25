@@ -214,7 +214,7 @@ Hint 칼럼(`readOnly` / `destructive` / `idempotent`)은 MCP 표준 annotation 
 
   | 코드 | 메시지 예시 |
   |---|---|
-  | `FILE_NOT_FOUND` | "FILE_NOT_FOUND: repo-alpha:no-such-file.txt": `(repository_id, path)` 조합이 fixture 에 없을 때. `list_repositories` 로 저장소를 재확인하거나 `search_code` 로 path 를 다시 탐색 |
+  | `FILE_NOT_FOUND` | "File not found: repo-alpha:no-such-file.txt [FILE_NOT_FOUND]": `(repository_id, path)` 조합이 fixture 에 없을 때. `list_repositories` 로 저장소를 재확인하거나 `search_code` 로 path 를 다시 탐색 |
 
 ---
 

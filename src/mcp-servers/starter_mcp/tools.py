@@ -50,7 +50,7 @@ async def echo(text: str) -> dict[str, Any]:
         text: Text to echo. Must not be empty.
     """
     if text == "":
-        raise InvalidInputError("text is required")
+        raise InvalidInputError("text is required [INVALID_INPUT]")
     return wrap_untrusted(
         metadata={"length": len(text)},
         untrusted_content={"content": text},
@@ -83,7 +83,7 @@ async def current_time(tz: str = "UTC") -> str:
         tz: IANA timezone name, for example UTC or Asia/Seoul. Defaults to UTC.
     """
     if tz not in available_timezones():
-        raise InvalidInputError(f"Unknown timezone: {tz}")
+        raise InvalidInputError(f"Unknown timezone: {tz} [INVALID_INPUT]")
     return datetime.now(ZoneInfo(tz)).isoformat()
 
 
@@ -100,7 +100,7 @@ async def sample_content(message: str = "Hello from starter-mcp") -> ToolResult:
         message: Text for the text block. Must not be empty.
     """
     if message == "":
-        raise InvalidInputError("message must not be empty")
+        raise InvalidInputError("message must not be empty [INVALID_INPUT]")
     wrapped = wrap_untrusted(
         metadata={"length": len(message)},
         untrusted_content={"content": message},

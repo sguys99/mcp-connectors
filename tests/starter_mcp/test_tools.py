@@ -27,6 +27,7 @@ async def test_echo_empty_raises(mcp_client: Client) -> None:
     with pytest.raises(ToolError) as exc_info:
         await mcp_client.call_tool("echo", {"text": ""})
     assert "text is required" in str(exc_info.value)
+    assert "[INVALID_INPUT]" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -87,3 +88,4 @@ async def test_current_time_invalid_tz_raises(mcp_client: Client) -> None:
     with pytest.raises(ToolError) as exc_info:
         await mcp_client.call_tool("current_time", {"tz": "Mars/Olympus"})
     assert "Unknown timezone" in str(exc_info.value)
+    assert "[INVALID_INPUT]" in str(exc_info.value)

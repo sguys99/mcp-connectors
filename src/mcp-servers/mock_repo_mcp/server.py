@@ -11,14 +11,26 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
 
 from _common.auth import build_http_middleware
 from mock_repo_mcp.config import settings
-from mock_repo_mcp.tools import get_file_content, list_repositories, search_code
+from mock_repo_mcp.tools import close_client, get_file_content, list_repositories, search_code
 
-mcp = FastMCP("mock-repo-mcp")
+
+@asynccontextmanager
+async def lifespan(app: FastMCP) -> AsyncIterator[None]:
+    """서버 종료 시 공유 HTTP 클라이언트를 닫습니다."""
+    try:
+        yield
+    finally:
+        await close_client()
+
+
+mcp = FastMCP("mock-repo-mcp", lifespan=lifespan)
 mcp.add_tool(list_repositories)
 mcp.add_tool(get_file_content)
 mcp.add_tool(search_code)

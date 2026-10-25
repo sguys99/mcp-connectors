@@ -167,8 +167,8 @@ The canonical list is `nl2sql_mcp/error_codes.py`. A test fails if a `[CODE]` in
 | Source | Code or message | When |
 |---|---|---|
 | `mock_repo_mcp` HTTP client | `[BACKEND_UNAVAILABLE]` | Retries exhausted, or a 4xx other than 404 from the backend API |
-| `mock_repo_mcp` | `FILE_NOT_FOUND: <repo>:<path>` (reported as `TOOL_ERROR`) | A file does not exist |
-| `mock_repo_mcp`, `starter_mcp` | `InvalidInputError` messages without a tag (reported as `TOOL_ERROR`) | Negative `limit` or `offset`, empty `query`, empty `text`, unknown time zone, invalid prompt arguments |
+| `mock_repo_mcp` | `[FILE_NOT_FOUND]`, `[NOT_FOUND]` | A file does not exist, or the backend API returned 404 |
+| `mock_repo_mcp`, `starter_mcp` | `[INVALID_INPUT]` | Negative `limit` or `offset`, empty `query`, empty `text`, unknown time zone, invalid prompt arguments |
 | `_common/auth.py` | HTTP 401, JSON-RPC error `-32001` | Missing or wrong `X-MCP-API-Key` |
 
-The untagged errors in `mock_repo_mcp` and `starter_mcp` predate the `[CODE]` convention. New servers should always tag their errors.
+Every error in `mock_repo_mcp` and `starter_mcp` ends with a `[CODE]` tag, like `nl2sql_mcp`. New servers should always tag their errors.
