@@ -32,6 +32,7 @@ export function TitleBar({ drawerOpen, drawerId, onMenu }: TitleBarProps) {
   const meta = useShellMetaValue();
   const selected = useSelectedServer();
   const apple = useIsApple();
+  const paletteKeys = shortcutLabel("mod+k", apple).join(apple ? "" : " ");
 
   const id = navIdFor(pathname);
   const item = ALL_ITEMS.find((i) => i.id === id);
@@ -108,13 +109,15 @@ export function TitleBar({ drawerOpen, drawerId, onMenu }: TitleBarProps) {
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-label={t("shell.openPalette")}
+        // 보이는 글자(안내와 단축키)를 그대로 이름으로 쓴다 (WCAG 2.5.3 Label in Name, 음성 입력으로 보이는 말을 해도 눌린다).
+        // 좁은 폭에서 글자가 숨어도 같은 이름이 남는다.
+        aria-label={`${t("shell.paletteHint")} ${paletteKeys}`}
         onClick={() => setPaletteOpen(true)}
         className="mx-auto flex h-[26px] w-[min(380px,100%)] min-w-0 items-center gap-2 rounded-sm border border-line bg-background pr-1.5 pl-2 text-xs text-fg-muted transition-colors hover:border-line-strong hover:text-foreground max-[901px]:mx-0 max-[901px]:size-[34px] max-[901px]:w-[34px] max-[901px]:flex-none max-[901px]:justify-center max-[901px]:p-0"
       >
         <SearchIcon aria-hidden className="size-3.5 flex-none" />
         <span className="min-w-0 flex-1 truncate text-left max-[901px]:hidden">{t("shell.paletteHint")}</span>
-        <Kbd className="flex-none max-[901px]:hidden">{shortcutLabel("mod+k", apple).join(apple ? "" : " ")}</Kbd>
+        <Kbd className="flex-none max-[901px]:hidden">{paletteKeys}</Kbd>
       </button>
 
       <div className="flex flex-none items-center gap-2">

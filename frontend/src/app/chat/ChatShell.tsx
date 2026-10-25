@@ -332,10 +332,21 @@ export default function ChatShell({
     window.setTimeout(() => inputRef.current?.focus(), 0);
   }, [session]);
 
+  // 첫 응답 조각이 오기 전에 멈추면 남길 assistant 턴이 없어 상태 영역이 빈 채로 끝난다(스크린 리더는 아무 말도 못 들음).
+  // 멈춘 시점의 턴 수를 적어 두고, 그 뒤로 턴이 바뀌지 않은 동안은 "Response stopped."를 낸다.
+  const [stoppedAtTurns, setStoppedAtTurns] = useState<number | null>(null);
+  const chatAbort = chat.abort;
+  const turnCount = chat.turns.length;
+  const handleStop = useCallback(() => {
+    setStoppedAtTurns(turnCount);
+    chatAbort();
+  }, [chatAbort, turnCount]);
+
   const handleSend = useCallback(
     (text: string) => {
       const options = buildOptions();
       if (!options || sendBlocked || busy) return;
+      setStoppedAtTurns(null);
       setStickSignal((n) => n + 1);
       setSelectedSpanId(null);
       void chat.send(text, options);
@@ -534,6 +545,8 @@ export default function ChatShell({
         : lastTurn.stopReason === "error"
           ? t("chat.liveFailed")
           : t("chat.liveDone");
+  } else if (stoppedAtTurns !== null && stoppedAtTurns === chat.turns.length) {
+    liveMessage = t("chat.liveStopped");
   }
 
   // ----- 가드 렌더 ----- //
@@ -660,7 +673,7 @@ export default function ChatShell({
         busyHint={awaitingTurn ? t("chat.awaitingHint") : undefined}
         streaming={busy}
         onSend={handleSend}
-        onStop={chat.abort}
+        onStop={handleStop}
         servers={effective}
       />
     </div>

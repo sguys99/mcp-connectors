@@ -53,7 +53,8 @@ export function LanguageToggle() {
         <ToggleGroupItem
           key={value}
           value={value}
-          aria-label={name}
+          // 보이는 약어(EN, KO)로 시작하는 이름이어야 음성 입력과 화면 낭독이 같은 말을 쓴다 (WCAG 2.5.3).
+          aria-label={`${label} (${name})`}
           title={name}
           className="px-2 text-xs font-medium"
         >

@@ -61,7 +61,7 @@ export function ApiKeyField({
           variant="ghost"
           size="icon"
           onClick={() => setShown((v) => !v)}
-          aria-pressed={shown}
+          // 이름이 Show/Hide 로 바뀌어 상태를 알린다. aria-pressed 까지 주면 "Hide ..., pressed"로 겹쳐 읽힌다.
           aria-label={t(shown ? "settings.hideKey" : "settings.showKey", { provider: providerLabel })}
           title={t(shown ? "settings.hideKey" : "settings.showKey", { provider: providerLabel })}
         >

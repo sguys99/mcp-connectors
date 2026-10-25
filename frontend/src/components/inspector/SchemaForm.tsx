@@ -147,6 +147,7 @@ function FieldControl({ id, field, value, invalid, describedBy, onChange }: Fiel
           onCheckedChange={(checked) => onChange(Boolean(checked))}
           aria-labelledby={`${id}-l`}
           aria-describedby={describedBy}
+          aria-required={field.required || undefined}
         />
       );
 
@@ -159,6 +160,7 @@ function FieldControl({ id, field, value, invalid, describedBy, onChange }: Fiel
             aria-invalid={invalid || undefined}
             aria-describedby={describedBy}
             aria-labelledby={`${id}-l`}
+            aria-required={field.required || undefined}
           >
             <SelectValue placeholder="-" />
           </SelectTrigger>
@@ -185,6 +187,7 @@ function FieldControl({ id, field, value, invalid, describedBy, onChange }: Fiel
           placeholder={placeholder}
           aria-invalid={invalid || undefined}
           aria-describedby={describedBy}
+          aria-required={field.required || undefined}
           onChange={(e) => onChange(e.target.value)}
           className="font-mono text-xs [font-variant-ligatures:none]"
         />
@@ -202,6 +205,7 @@ function FieldControl({ id, field, value, invalid, describedBy, onChange }: Fiel
             placeholder={field.kind === "json" ? '{"key": "value"}' : placeholder}
             aria-invalid={invalid || undefined}
             aria-describedby={describedBy}
+            aria-required={field.required || undefined}
             onChange={(e) => onChange(e.target.value)}
             className="font-mono text-xs leading-5 [font-variant-ligatures:none]"
             style={{ minHeight: `${rows * 1.25 + 1}rem` }}
@@ -218,6 +222,7 @@ function FieldControl({ id, field, value, invalid, describedBy, onChange }: Fiel
           placeholder={placeholder}
           aria-invalid={invalid || undefined}
           aria-describedby={describedBy}
+          aria-required={field.required || undefined}
           onChange={(e) => onChange(e.target.value)}
           className="font-mono text-xs [font-variant-ligatures:none]"
         />

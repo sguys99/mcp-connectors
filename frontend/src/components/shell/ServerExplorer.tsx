@@ -54,6 +54,8 @@ export function ServerExplorer() {
           size="icon-sm"
           onClick={refreshServers}
           disabled={refreshing}
+          // 실행 중에도 포커스를 버튼에 남긴다 (disabled 면 body 로 빠짐).
+          focusableWhenDisabled
           aria-label={t("shell.refreshAll")}
           title={t("shell.refreshAll")}
         >

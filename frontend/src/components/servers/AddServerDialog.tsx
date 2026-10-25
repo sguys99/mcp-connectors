@@ -325,7 +325,7 @@ function ServerForm({ editing, onDone }: { editing: string | null; onDone: () =>
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-pressed={row.shown}
+                  // 이름이 Show/Hide 로 바뀌어 상태를 알린다 (aria-pressed 와 겹치지 않게).
                   aria-label={t(row.shown ? "runtime.hideValue" : "runtime.showValue", { n: index + 1 })}
                   title={t(row.shown ? "runtime.hideValue" : "runtime.showValue", { n: index + 1 })}
                   onClick={() => updateRow(row.id, { shown: !row.shown })}

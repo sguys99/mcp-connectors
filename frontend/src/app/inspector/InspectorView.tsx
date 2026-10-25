@@ -98,6 +98,12 @@ interface InspectorViewProps {
   stdio?: StdioTarget | null;
 }
 
+// 실행 전 입력 검증에 걸리면 첫 오류 칸으로 포커스를 옮긴다. 포커스가 Run 버튼에 남으면 스크린 리더는 오류를 알 수 없고,
+// 칸으로 옮기면 이름, invalid 상태, 오류 문구(aria-describedby)가 한 번에 읽힌다. 오류 표시가 그려진 다음 프레임에 찾는다.
+function focusFirstInvalid() {
+  requestAnimationFrame(() => document.querySelector<HTMLElement>("main [aria-invalid='true']")?.focus());
+}
+
 export function InspectorView({ initialServer, reachable, stdio }: InspectorViewProps) {
   if (stdio) return <StdioView target={stdio} />;
   return <HttpInspector serverName={initialServer} reachable={reachable} />;
@@ -522,6 +528,7 @@ function HttpInspector({ serverName, reachable }: { serverName: string; reachabl
         const built = buildArgs(resourceFields, primFormValues);
         if (Object.keys(built.errors).length > 0) {
           setErrors(built.errors);
+          focusFirstInvalid();
           return;
         }
         uri = expandUriTemplate(resourceSelection.meta.uriTemplate, built.args);
@@ -542,6 +549,7 @@ function HttpInspector({ serverName, reachable }: { serverName: string; reachabl
       const built = buildArgs(promptFieldList, primFormValues);
       if (Object.keys(built.errors).length > 0) {
         setErrors(built.errors);
+        focusFirstInvalid();
         return;
       }
       setErrors({});
@@ -557,6 +565,7 @@ function HttpInspector({ serverName, reachable }: { serverName: string; reachabl
       const built = buildArgs(fields, draft.values);
       if (Object.keys(built.errors).length > 0) {
         setErrors(built.errors);
+        focusFirstInvalid();
         return;
       }
       args = { ...built.args, ...draft.extra };

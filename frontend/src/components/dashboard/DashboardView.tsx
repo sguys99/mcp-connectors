@@ -140,6 +140,8 @@ export function DashboardView({ servers, registryError }: DashboardViewProps) {
               size="lg"
               className="rounded-md max-[901px]:flex-1"
               disabled={busy}
+              // 누른 뒤 disabled 가 되면 포커스가 body 로 빠진다. aria-disabled 로만 막아 포커스를 버튼에 남긴다.
+              focusableWhenDisabled
               onClick={() => void handleRefreshAll()}
             >
               <RefreshCwIcon className={busy ? "animate-spin" : undefined} />

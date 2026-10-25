@@ -5,6 +5,10 @@ import { defineConfig, devices } from "@playwright/test";
 //   - webServer: `npm run dev` 를 자동 기동 (3000). 이미 떠 있으면 재사용.
 //   - globalSetup: mock-repo-mcp (port 8002) 를 백그라운드 spawn 후 health-check polling
 //   - globalTeardown: spawn 한 mock-repo-mcp 만 SIGTERM (외부에서 떠 있던 인스턴스는 보존)
+// E2E_BASE_URL 을 주면 이미 떠 있는 앱(예: 다른 포트의 `next start`)과 그 앱이 보는 MCP 서버를 그대로 쓴다.
+// 이때는 webServer 와 global-setup/teardown(8001, 8002 기동)을 건너뛴다. 기본 포트를 다른 작업이 쓰고 있을 때 쓴다.
+const externalApp = process.env.E2E_BASE_URL;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false, // mock-repo-mcp 단일 인스턴스 — race 회피
@@ -13,7 +17,7 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: externalApp ?? "http://localhost:3000",
     trace: "on-first-retry",
     video: "off",
   },
@@ -23,7 +27,7 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
+  webServer: externalApp ? undefined : {
     command: "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
@@ -33,6 +37,6 @@ export default defineConfig({
     // MCP_ALLOW_RUNTIME_PROXY: 런타임 서버 프록시(/api/mcp-runtime) e2e 용. 기본값은 꺼짐이다.
     env: { CHAT_MOCK_LLM: "1", MCP_ALLOW_RUNTIME_PROXY: "true" },
   },
-  globalSetup: "./tests/e2e/global-setup.ts",
-  globalTeardown: "./tests/e2e/global-teardown.ts",
+  globalSetup: externalApp ? undefined : "./tests/e2e/global-setup.ts",
+  globalTeardown: externalApp ? undefined : "./tests/e2e/global-teardown.ts",
 });
