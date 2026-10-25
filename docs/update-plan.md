@@ -518,7 +518,7 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 | P7-2 | 히스토리 정리 | bundle 백업, orphan 커밋, force push, 원격 브랜치 삭제, 정리 후 `gitleaks git` 0건 (오케스트레이터 직접) | ✅ |
 | P7-3 | 캐시 삭제 요청 | GitHub Support sensitive data removal 요청문 초안 (P7-4와 병렬) | ✅ |
 | P7-4 | CI와 Docker 검증 | GitHub Actions(ruff, pytest, frontend lint/test/build, Playwright, gitleaks), compose up 후 헬스 체크 | ✅ |
-| P7-5 | 이월 코드 항목 | `[CODE]` 접미, mock_repo HTTP 클라이언트 재사용, ajv 정적 import, Inspector와 Chat 모바일 성능, Chat CLS | ⬜ |
+| P7-5 | 이월 코드 항목 | `[CODE]` 접미, mock_repo HTTP 클라이언트 재사용, ajv 정적 import, Inspector와 Chat 모바일 성능, Chat CLS | 🟨 |
 | P7-6 | 스크린 리더 점검 | 접근성 트리 자동 근사 점검과 점검표 갱신 (실기 점검은 사용자) | ⬜ |
 | P7-7 | 저장소 설정 | description, topics, 소셜 프리뷰 이미지, private vulnerability reporting, Dependabot | ⬜ |
 | P7-8 | 홍보 채널 | MCP 서버 목록 저장소 제출안, 커뮤니티 게시글 초안 | ⬜ |
@@ -541,6 +541,7 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 - [ ] 보안 설정: private vulnerability reporting 켜기(Phase 6에서 넘김), Dependabot security updates 켜기(지금 꺼짐)
 - [ ] Phase 6 이월 항목: SECURITY.md 신고 응답 기한 확정, 실제 스크린 리더 점검, Inspector와 Chat 모바일 성능(68, 69점)과 Chat desktop CLS 0.16, MCP SDK의 ajv 정적 import, mock_repo와 starter 오류의 `[CODE]` 접미 누락, mock_repo HTTP 클라이언트의 호출마다 생성
   - 진행(2026-10-25, P7-1): SECURITY.md 신고 응답 기한을 접수 7일, 1차 판단 14일로 확정하고 자원봉사로 유지하는 프로젝트라 best effort 목표라는 문장을 덧붙였습니다. 나머지 이월 항목은 P7-5와 P7-6에서 다룹니다.
+  - 진행(2026-10-25, P7-5 백엔드): mock_repo와 starter의 클라이언트 오류 12종에 `[CODE]` 접미를 붙였습니다(입력 오류는 `[INVALID_INPUT]`, 파일 없음은 `File not found: ... [FILE_NOT_FOUND]`, HTTP 404는 `Resource not found: ... [NOT_FOUND]`). 테스트가 태그까지 확인하고 starter 시나리오 세 건에 `error_code`를 넣었으며, 잘못된 audience 프롬프트의 기대 코드는 `PROMPT_ERROR`에서 `INVALID_INPUT`으로 바뀌었어요. mock_repo `HttpBackendClient`는 첫 호출에 만든 `AsyncClient`를 재사용하고 서버 lifespan 종료 때 닫습니다(재시도 횟수와 동작은 그대로). `make test` 607, HTTP 9, CLI 151, starter 시나리오 15/15 통과입니다
 - [ ] v0.1.0 태그와 릴리스 노트
 - [ ] 홍보 채널 정리 (MCP 서버 목록 저장소, 커뮤니티 게시글 초안)
 
