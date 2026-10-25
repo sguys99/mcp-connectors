@@ -119,7 +119,10 @@ function ShellFrame({ servers, runtimeProxyEnabled = false, children }: AppShell
   const [mobileTarget, setMobileTarget] = useState<HTMLElement | null>(null);
 
   const kind = sidebarKindFor(pathname);
-  const hasSidebar = kind === "explorer" || (kind === "slot" && slotState !== "empty");
+  // Chat 은 레지스트리에 HTTP 서버가 있을 때만 대화 목록(사이드바)을 채운다. 없으면 처음부터 열을 잡지 않아
+  // 서버가 없는 안내 화면에서 열이 나중에 접히며 본문이 밀리지 않는다. 있으면 hydration 전부터 열을 잡아 둔다.
+  const chatCanFillSidebar = servers.some((s) => s.transport === "streamable_http" && !s.runtime);
+  const hasSidebar = kind === "explorer" || (kind === "slot" && (slotState === "filled" || (slotState === "pending" && chatCanFillSidebar)));
 
   const goToServer = useCallback(
     (name: string, forceInspector: boolean) => {

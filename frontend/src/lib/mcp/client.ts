@@ -19,6 +19,7 @@ import type { JsonSchemaValidator, jsonSchemaValidator } from "@modelcontextprot
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 
+import type { ToolCallOutput } from "./output-validation";
 import { parseServerTiming, pickProxyTiming, type ProxyTiming } from "@/lib/trace/timing";
 
 import type {
@@ -44,9 +45,9 @@ import type {
 const REQUEST_TIMEOUT_MS = 30_000;
 
 // 도구 outputSchema 검증기. SDK 기본값은 ajv 이고 서버(Route Handler, SSR)에서는 그대로 쓴다.
-// 브라우저는 ajv 를 번들에서 뺐으므로(next.config.ts) 검증을 건너뛰는 검증기를 넘긴다. 이때 structuredContent 가
-// outputSchema 와 어긋나도 SDK 가 호출을 오류로 바꾸지 않고 서버가 보낸 그대로 Inspector 에 보여 준다.
-// 출력 검증은 FastMCP 서버가 응답 전에 하고, Chat(/api/chat)과 서버 쪽 호출은 계속 ajv 로 검증한다.
+// 브라우저는 ajv 를 첫 번들에서 뺐으므로(next.config.ts) SDK 안에서는 검증을 건너뛰는 검증기를 넘기고,
+// 같은 검사(누락된 structuredContent, 스키마 불일치)를 callTool 에서 lib/mcp/output-validation.ts 로 늦게 한다.
+// 그 모듈이 진짜 ajv 를 별도 청크로 불러온다. 서버 쪽 호출은 SDK 기본 ajv 검증을 그대로 쓴다.
 function browserSchemaValidator(): jsonSchemaValidator | undefined {
   if (typeof window === "undefined") return undefined;
   return {
@@ -275,6 +276,9 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
     }
   };
 
+  // 도구별 outputSchema (브라우저에서만 채워진다. 서버 쪽은 SDK 가 검증한다)
+  const outputSchemas = new Map<string, Record<string, unknown>>();
+
   function getClient(): Promise<Client> {
     if (connection) return connection;
     connection = (async () => {
@@ -383,6 +387,11 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
       const result = await client.listTools(undefined, {
         timeout: REQUEST_TIMEOUT_MS,
       });
+      // 브라우저는 SDK 의 출력 검증을 쓰지 않으므로 outputSchema 를 따로 기억해 callTool 이 늦게 검증한다.
+      outputSchemas.clear();
+      for (const t of result.tools) {
+        if (t.outputSchema && typeof window !== "undefined") outputSchemas.set(t.name, t.outputSchema as Record<string, unknown>);
+      }
       return result.tools.map((t) => ({
         name: t.name,
         description: t.description ?? "",
@@ -402,7 +411,16 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
 
     async callTool(name, params, options) {
       return runTraced<CallToolPayload>(
-        (client, signal) => client.callTool({ name, arguments: params }, undefined, { timeout: REQUEST_TIMEOUT_MS, signal }),
+        async (client, signal) => {
+          const result = await client.callTool({ name, arguments: params }, undefined, { timeout: REQUEST_TIMEOUT_MS, signal });
+          // SDK 가 하던 outputSchema 검증을 브라우저에서는 여기서 한다. ajv 는 검증이 필요한 첫 호출에서만 불러온다.
+          const schema = outputSchemas.get(name);
+          if (schema) {
+            const { assertToolOutput } = await import("./output-validation");
+            assertToolOutput(name, schema, result as ToolCallOutput);
+          }
+          return result;
+        },
         (payload, raw) => payload.structuredContent ?? payload.content ?? raw,
         options?.signal,
       );
