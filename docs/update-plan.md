@@ -520,8 +520,8 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 | P7-4 | CI와 Docker 검증 | GitHub Actions(ruff, pytest, frontend lint/test/build, Playwright, gitleaks), compose up 후 헬스 체크 | ✅ |
 | P7-5 | 이월 코드 항목 | `[CODE]` 접미, mock_repo HTTP 클라이언트 재사용, ajv 정적 import, Inspector와 Chat 모바일 성능, Chat CLS | 🟨 |
 | P7-6 | 스크린 리더 점검 | 접근성 트리 자동 근사 점검과 점검표 갱신 (실기 점검은 사용자) | ⬜ |
-| P7-7 | 저장소 설정 | description, topics, 소셜 프리뷰 이미지, private vulnerability reporting, Dependabot | ⬜ |
-| P7-8 | 홍보 채널 | MCP 서버 목록 저장소 제출안, 커뮤니티 게시글 초안 | ⬜ |
+| P7-7 | 저장소 설정 | description, topics, 소셜 프리뷰 이미지, private vulnerability reporting, Dependabot, 의존성 보안 업데이트(Dependabot 경보 68건, 추가) | 🟨 |
+| P7-8 | 홍보 채널 | MCP 서버 목록 저장소 제출안, 커뮤니티 게시글 초안 | ✅ |
 | P7-9 | 완료 검증과 릴리스 | 깨끗한 clone에서 Quick Start, CI 녹색, CHANGELOG 0.1.0, 태그와 GitHub Release | ⬜ |
 
 - [x] **히스토리 정리 (최우선)**: 정리 전 히스토리를 로컬 백업 브랜치와 저장소 밖 git bundle로 보존한 뒤, 현재 상태를 orphan 커밋 하나로 압축해(작성자는 GitHub noreply 주소) `main`에 force push합니다. 원격 `revamp/phase-*` 브랜치 6개는 지웁니다. 방식은 아래 9장의 결정을 따릅니다
@@ -543,7 +543,8 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
   - 진행(2026-10-25, P7-1): SECURITY.md 신고 응답 기한을 접수 7일, 1차 판단 14일로 확정하고 자원봉사로 유지하는 프로젝트라 best effort 목표라는 문장을 덧붙였습니다. 나머지 이월 항목은 P7-5와 P7-6에서 다룹니다.
   - 진행(2026-10-25, P7-5 백엔드): mock_repo와 starter의 클라이언트 오류 12종에 `[CODE]` 접미를 붙였습니다(입력 오류는 `[INVALID_INPUT]`, 파일 없음은 `File not found: ... [FILE_NOT_FOUND]`, HTTP 404는 `Resource not found: ... [NOT_FOUND]`). 테스트가 태그까지 확인하고 starter 시나리오 세 건에 `error_code`를 넣었으며, 잘못된 audience 프롬프트의 기대 코드는 `PROMPT_ERROR`에서 `INVALID_INPUT`으로 바뀌었어요. mock_repo `HttpBackendClient`는 첫 호출에 만든 `AsyncClient`를 재사용하고 서버 lifespan 종료 때 닫습니다(재시도 횟수와 동작은 그대로). `make test` 607, HTTP 9, CLI 151, starter 시나리오 15/15 통과입니다
 - [ ] v0.1.0 태그와 릴리스 노트
-- [ ] 홍보 채널 정리 (MCP 서버 목록 저장소, 커뮤니티 게시글 초안)
+- [x] 홍보 채널 정리 (MCP 서버 목록 저장소, 커뮤니티 게시글 초안)
+  - 완료(2026-10-25, P7-8): [promotion-kit.md](launch/promotion-kit.md)에 채널 표(적합도, 제출 규칙과 주소, 선행 조건, 순서), 바로 붙여 넣을 초안(awesome-mcp-servers와 awesome-mcp-devtools 항목과 PR 본문, 디렉터리 소개문, Show HN 제목과 첫 댓글, r/mcp와 r/ClaudeAI, dev.to 개요, GeekNews Show GN과 OKKY, 디스콰이엇 한국어 글, LinkedIn과 X 영문/한글), 출시 체크리스트를 담았습니다. 규칙은 2026-10-25에 각 페이지에서 확인했어요. 적합도가 높은 곳은 awesome-mcp-devtools(Testing Tools), awesome-mcp-servers(Frameworks, Glama 점수 배지가 필요해 Glama 등록이 먼저), Show HN, r/mcp, GeekNews입니다. 공식 MCP Registry와 modelcontextprotocol/servers, PulseMCP, Smithery는 지금은 맞지 않습니다(패키지나 공개 원격 주소가 필요하거나 접수를 닫음). Reddit, OKKY, 디스콰이엇 규칙은 여기서 읽을 수 없어 게시 전 확인 항목으로 표시했습니다. 게시는 사용자가 합니다
 
 **완료 기준**: public 저장소에서 clone 후 Quick Start 그대로 동작, CI 녹색
 
