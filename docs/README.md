@@ -25,6 +25,7 @@ Related documents outside `docs/`:
 | [scenario-format.md](scenario-format.md) | The scenario YAML format read by `mcp_cli.py test` and written by the Inspector History export. JSON Schema: [configs/schemas/scenario.schema.json](../configs/schemas/scenario.schema.json) | English |
 | [mcp-spec/](mcp-spec/) | MCP server specs written with `/mcp-spec-writer`, one per server (`<server-name>_v0.X.md`) | Korean |
 | [assets/](assets/) | Diagrams (light and dark SVG), screenshots, and demo GIFs used by the READMEs and these guides | |
+| [launch/promotion-kit.md](launch/promotion-kit.md) | Where to list and announce the project (awesome lists, directories, Show HN, Reddit, GeekNews), their submission rules, and ready-to-paste drafts | English, Korean posts |
 
 ## NL2SQL test plan and data
 
