@@ -8,7 +8,7 @@
 //   별도 status 영역이 알린다. 스크롤 영역이라 키보드로 포커스를 받을 수 있다.
 
 import { ArrowDownIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { AssistantTurn, ChatTurn } from "@/lib/chat/serialize";
@@ -39,6 +39,12 @@ export function Thread({ turns, streamingTurn, streamingModel, traces, empty, st
   const lastTopRef = useRef(0);
   // 직전에 본 scrollHeight. 내용이 줄어서(승인 패널이 접히는 등) 브라우저가 scrollTop 을 줄인 것을 사용자의 위로 스크롤과 구분한다.
   const lastHeightRef = useRef(0);
+  // 사용자가 위로 스크롤하려는 입력(휠, 터치, 위쪽 키, 안쪽 포커스 이동)을 했는지. 위치 변화만으로는 구분할 수 없다:
+  // 내용이 한 프레임 안에서 줄었다가 다시 늘면(스트리밍 카드가 최종 카드로 바뀔 때 등) 브라우저가 scrollTop 을 줄여 두고,
+  // 스크롤 이벤트는 높이가 돌아온 뒤에 도착해 "높이는 그대로인데 위로 올라간" 것처럼 보인다.
+  const upIntentRef = useRef(false);
+  // 포인터를 누르고 있는 동안(스크롤바 끌기, 글자 선택 끌기)의 스크롤도 사용자 스크롤이다.
+  const pointerHeldRef = useRef(false);
   const [atBottom, setAtBottom] = useState(true);
 
   const scrollToBottom = useCallback(() => {
@@ -67,8 +73,31 @@ export function Thread({ turns, streamingTurn, streamingModel, traces, empty, st
     scrollToBottom();
   }, [stickSignal, scrollToBottom]);
 
-  // 붙어 있다가 떨어지는 것은 "위로 스크롤했을 때"뿐이다. 내용이 한꺼번에 길어져서 맨 아래에서 멀어진 것은 사용자의 스크롤이 아니므로
-  // (스크롤 이벤트가 늦게 도착해도) 붙어 있는 상태를 유지하고, 다음 ResizeObserver 호출이 다시 맨 아래로 내린다.
+  useEffect(() => {
+    const release = () => {
+      pointerHeldRef.current = false;
+    };
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    return () => {
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+    };
+  }, []);
+
+  // 붙어 있다가 떨어지는 것은 "사용자가 위로 스크롤했을 때"뿐이다. 내용이 한꺼번에 길어져서 맨 아래에서 멀어진 것이나
+  // 레이아웃 때문에 브라우저가 scrollTop 을 줄인 것은 사용자의 스크롤이 아니므로 (스크롤 이벤트가 늦게 도착해도) 붙어 있는 상태를
+  // 유지하고, 다음 ResizeObserver 호출이나 이어지는 스크롤이 다시 맨 아래로 내린다.
+  function markUpIntent() {
+    upIntentRef.current = true;
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowUp" || event.key === "PageUp" || event.key === "Home" || (event.key === " " && event.shiftKey)) {
+      markUpIntent();
+    }
+  }
+
   function onScroll() {
     const el = scrollRef.current;
     if (!el) return;
@@ -77,8 +106,15 @@ export function Thread({ turns, streamingTurn, streamingModel, traces, empty, st
     const scrolledUp = !shrunk && el.scrollTop < lastTopRef.current - 1;
     lastTopRef.current = el.scrollTop;
     lastHeightRef.current = el.scrollHeight;
-    if (near) stickRef.current = true;
-    else if (scrolledUp) stickRef.current = false;
+    if (near) {
+      stickRef.current = true;
+      upIntentRef.current = false;
+    } else if (scrolledUp && (upIntentRef.current || pointerHeldRef.current)) {
+      stickRef.current = false;
+    } else if (stickRef.current) {
+      // 사용자 입력 없이 맨 아래에서 밀려났다. 붙어 있는 상태이므로 바로 되돌린다.
+      scrollToBottom();
+    }
     setAtBottom(stickRef.current);
   }
 
@@ -95,6 +131,18 @@ export function Thread({ turns, streamingTurn, streamingModel, traces, empty, st
         aria-label={t("chat.threadLabel")}
         tabIndex={0}
         onScroll={onScroll}
+        onWheel={(event) => {
+          if (event.deltaY < 0) markUpIntent();
+        }}
+        onTouchMove={markUpIntent}
+        onKeyDown={onKeyDown}
+        // Tab 이나 스크린 리더로 앞쪽 버튼에 포커스가 가면 브라우저가 그 위치로 스크롤한다. 이것도 사용자의 이동이다.
+        onFocus={(event) => {
+          if (event.target !== event.currentTarget) markUpIntent();
+        }}
+        onPointerDown={() => {
+          pointerHeldRef.current = true;
+        }}
         className="min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset"
       >
         <div ref={innerRef} className="mx-auto grid max-w-[820px] grid-cols-[minmax(0,1fr)] gap-5 px-5 pt-5 pb-6 max-[901px]:gap-4 max-[901px]:px-3 max-[901px]:py-4">

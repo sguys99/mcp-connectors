@@ -200,11 +200,20 @@ test("thread follows new content, stops when the user scrolls up, and Jump to la
   const gap = () => log.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
   await expect.poll(gap).toBeLessThan(60);
 
-  // 두 번째 질문이 진행되는 동안 사용자가 위로 스크롤한다
-  await ask(page, "[[tool:list_repositories]] [[sleep:1500]]");
+  // 사용자 입력 없이 scrollTop 이 줄어도(내용이 한 프레임 안에서 줄었다 늘어 브라우저가 scrollTop 을 줄인 경우와 같다)
+  // 붙어 있는 상태는 풀리지 않고 맨 아래로 돌아온다. CI 에서 간헐적으로 gap 111 에 멈추던 원인이다.
   await log.evaluate((el) => {
-    el.scrollTop = 0;
+    el.scrollTop -= 150;
   });
+  await expect.poll(gap).toBeLessThan(60);
+  await expect(page.getByRole("button", { name: "Jump to latest" })).toBeHidden();
+
+  // 두 번째 질문이 진행되는 동안 사용자가 휠로 위로 스크롤한다. scrollTop 을 직접 바꾸면 사용자 입력이 아니라서
+  // 스레드가 다시 맨 아래로 붙는다 (레이아웃 때문에 브라우저가 scrollTop 을 줄인 것과 같은 취급).
+  await ask(page, "[[tool:list_repositories]] [[sleep:1500]]");
+  await log.hover();
+  await page.mouse.wheel(0, -5000);
+  await expect.poll(() => log.evaluate((el) => el.scrollTop)).toBe(0);
   const jump = page.getByRole("button", { name: "Jump to latest" });
   await expect(jump).toBeVisible();
   await expect(page.getByText("Mock summary of 1 tool call").nth(1)).toBeVisible({ timeout: 15_000 });
