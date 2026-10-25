@@ -22,11 +22,11 @@ Pick one of the two paths. You can add the other later.
 | Path | You need | What you get |
 |---|---|---|
 | Docker (recommended) | Docker with Compose v2 (`docker compose`) | The Frontend on `:3000` and three MCP servers on `:8001`, `:8002`, `:8004` |
-| Local | [uv](https://docs.astral.sh/uv/) (it installs Python 3.12.12 for you), Node.js 20.9 or newer with npm | The same pieces run on the host, plus the CLI and the test suites |
+| Local | [uv](https://docs.astral.sh/uv/) (it installs Python 3.12.12 for you), Node.js 24 (Active/Maintenance LTS) or newer with npm | The same pieces run on the host, plus the CLI and the test suites |
 
 Notes:
 
-- Node 20.9 is the minimum required by Next.js 16 (the Frontend image uses `node:20-alpine`). The repository has no `.nvmrc` or `engines` field.
+- Node 24 is the LTS line the repository targets: the Frontend image uses `node:24-alpine`, CI runs Node 24, and `frontend/package.json` declares `engines.node >=24` (with `frontend/.nvmrc`). Next.js 16 itself only needs 20.9, but Node 20 reached end of life in April 2026.
 - The CLI and the test suites always run on the host, so you need `uv` for them even if the servers run in Docker.
 - The NL2SQL sample database is a Docker container in both paths.
 

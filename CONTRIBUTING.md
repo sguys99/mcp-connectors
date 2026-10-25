@@ -21,7 +21,7 @@ By participating in this project you agree to follow the [Code of Conduct](CODE_
 ### Prerequisites
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/)
-- Node.js 20.9 or newer and npm (for the Frontend; Next.js 16 requires 20.9)
+- Node.js 24 or newer and npm (for the Frontend; see `frontend/.nvmrc`)
 - Docker with Compose (optional: the full stack, the NL2SQL sample database, integration tests)
 - [gitleaks](https://github.com/gitleaks/gitleaks) is installed automatically by pre-commit; a local binary is only needed for full tree scans
 

@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-Nothing yet beyond the `0.1.0` content below.
+### Changed
+
+- Frontend dependencies updated for security (zod 4.6.7, happy-dom 21, body-parser 2.4 through the MCP SDK, postcss-selector-parser 7.1) and the npm minor/patch group (React 19.3, Base UI 1.9, Playwright 1.64, and others).
+- Node.js moves to the 24 LTS line (Frontend image `node:24-alpine`, CI, `engines`, `.nvmrc`).
+
+### Fixed
+
+- The Frontend MCP client starts a new session and retries once when the server answers 404 for an expired session (the MCP Python SDK closes Streamable HTTP sessions idle for 30 minutes).
 
 ## [0.1.0] (unreleased)
 

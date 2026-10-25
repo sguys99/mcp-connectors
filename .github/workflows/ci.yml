@@ -19,7 +19,7 @@ concurrency:
 env:
   # Python 버전은 uv 가 .python-version 을 읽어 정합니다
   UV_PYTHON_PREFERENCE: managed
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
   FORCE_COLOR: "1"
   # setup-uv 는 v8 부터 major 태그(v10)를 내지 않아 전체 버전으로 고정합니다
 

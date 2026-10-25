@@ -21,6 +21,12 @@ updates:
     groups:
       python-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # pyproject.toml pins mcp<2 and fastmcp<4; move to a new major on purpose, together with the code.
+      - dependency-name: "mcp"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "fastmcp"
+        update-types: ["version-update:semver-major"]
 
   # Frontend (npm): frontend/package.json and package-lock.json
   - package-ecosystem: "npm"
@@ -74,6 +80,9 @@ updates:
       # The project targets Python 3.12 (pyproject.toml); move to a new Python version on purpose.
       - dependency-name: "python"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Node.js is moved to a new LTS line by hand (see frontend/.nvmrc and CI NODE_VERSION).
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
       # The Pagila sample DB image is built and documented for PostgreSQL 17.
       - dependency-name: "postgres"
         update-types: ["version-update:semver-major"]
