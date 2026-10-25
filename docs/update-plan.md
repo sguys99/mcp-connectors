@@ -520,7 +520,7 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 | P7-4 | CI와 Docker 검증 | GitHub Actions(ruff, pytest, frontend lint/test/build, Playwright, gitleaks), compose up 후 헬스 체크 | ✅ |
 | P7-5 | 이월 코드 항목 | `[CODE]` 접미, mock_repo HTTP 클라이언트 재사용, ajv 정적 import, Inspector와 Chat 모바일 성능, Chat CLS | ✅ |
 | P7-6 | 스크린 리더 점검 | 접근성 트리 자동 근사 점검과 점검표 갱신 (실기 점검은 사용자) | ✅ |
-| P7-7 | 저장소 설정 | description, topics, 소셜 프리뷰 이미지, private vulnerability reporting, Dependabot, 의존성 보안 업데이트(Dependabot 경보 68건, 추가) | 🟨 |
+| P7-7 | 저장소 설정 | description, topics, 소셜 프리뷰 이미지, private vulnerability reporting, Dependabot, 의존성 보안 업데이트(Dependabot 경보 68건, 추가) | ✅ |
 | P7-8 | 홍보 채널 | MCP 서버 목록 저장소 제출안, 커뮤니티 게시글 초안 | ✅ |
 | P7-9 | 완료 검증과 릴리스 | 깨끗한 clone에서 Quick Start, CI 녹색, CHANGELOG 0.1.0, 태그와 GitHub Release | ⬜ |
 
@@ -537,8 +537,10 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
   - 완료(2026-10-25, P7-2): 정리 후 히스토리를 새로 받은 public clone에서 다시 검사했습니다. `rev-list --all` 커밋 1개, `gitleaks git` 0건(`.gitleaks.toml` 적용)이고, 트리가 P7-1에서 검사한 작업 트리와 같으므로 비식별화 grep 결과(0건)도 그대로 유효합니다
 - [x] 프로젝트 이름 최종 확정 (아래 9장 참고). 이름을 바꾸면 문서의 저장소 주소를 일괄 치환합니다
   - 완료(2026-10-25, P7-1): `mcp-connectors`를 그대로 씁니다. 이름이 바뀌지 않아 문서 주소 치환은 필요 없습니다.
-- [ ] 저장소 설정: description, topics(`mcp`, `model-context-protocol`, `fastmcp`, `claude`, `mcp-inspector`), 소셜 프리뷰 이미지
-- [ ] 보안 설정: private vulnerability reporting 켜기(Phase 6에서 넘김), Dependabot security updates 켜기(지금 꺼짐)
+- [x] 저장소 설정: description, topics(`mcp`, `model-context-protocol`, `fastmcp`, `claude`, `mcp-inspector`), 소셜 프리뷰 이미지
+  - 완료(2026-10-25, P7-7): description과 topics 10개(`mcp`, `model-context-protocol`, `fastmcp`, `claude`, `claude-code`, `mcp-inspector`, `mcp-server`, `nl2sql`, `nextjs`, `python`)를 API로 넣고 Wiki를 끄고 병합 후 브랜치 삭제를 켰습니다. 소셜 프리뷰는 디자인 토큰(concept A 다크, 청록 브랜드)으로 만든 1280x640 이미지 [social-preview.png](assets/social/social-preview.png)와 원본 HTML, 렌더 스크립트를 `docs/assets/social/`에 두었어요. 제목, 한 줄 소개, 4단계 띠(Spec, Server, Guardrails, Inspector / Chat), 실제 Inspector 화면을 중앙 안전 영역에 배치했습니다. 업로드는 API가 없어 사용자가 Settings에서 합니다(대기)
+- [x] 보안 설정: private vulnerability reporting 켜기(Phase 6에서 넘김), Dependabot security updates 켜기(지금 꺼짐)
+  - 완료(2026-10-25, P7-7): private vulnerability reporting, Dependabot alerts와 security updates, secret scanning과 push protection을 켰습니다. `.github/dependabot.yml`은 uv, npm, github-actions, docker를 매주 월요일 09:00(Asia/Seoul)에 확인하고 minor/patch를 생태계별 PR 하나로 묶으며, `mcp`와 `fastmcp`, docker `node`의 메이저 갱신은 무시합니다. 켜자마자 경보 68건(critical 3, high 28)이 떠서 바로 처리했어요. Python은 mcp 1.27.1에서 1.30.0, fastmcp 3.3.1에서 3.4.11(`<2`, `<4`로 상한), starlette, cryptography, pyjwt 등 13개를 올렸고 코드 변경은 필요 없었습니다. 프론트엔드는 zod, happy-dom, body-parser(SDK 1.32.2), postcss-selector-parser(override)와 minor 묶음(React 19.3.1, Base UI 1.9 등)을 반영해 `npm audit` 0건이고, 지원이 끝난 Node 20을 Node 24 LTS로 바꿨습니다(Dockerfile, CI, `engines`, `.nvmrc`). 그 결과 열린 경보는 0건입니다. Dependabot PR 16개 중 메이저 8개는 릴리스 뒤 검토로 미루고 닫았고 나머지는 반영되어 닫았어요. MCP SDK 1.30이 30분 쉰 HTTP 세션을 닫는 변경을 확인하다 Frontend 브라우저 클라이언트가 404 뒤 새로고침 전까지 멈추는 버그를 찾아, 404면 initialize를 다시 하고 요청을 한 번 재시도하게 고쳤습니다(테스트 3개). CI는 녹색이고, E2E에서 간헐 실패 2건(`chat.spec.ts`의 스크롤 간격, a11y 랜드마크 중복)이 재실행으로 통과해 P7-9에서 안정화합니다
 - [x] Phase 6 이월 항목: SECURITY.md 신고 응답 기한 확정, 실제 스크린 리더 점검, Inspector와 Chat 모바일 성능(68, 69점)과 Chat desktop CLS 0.16, MCP SDK의 ajv 정적 import, mock_repo와 starter 오류의 `[CODE]` 접미 누락, mock_repo HTTP 클라이언트의 호출마다 생성
   - 진행(2026-10-25, P7-1): SECURITY.md 신고 응답 기한을 접수 7일, 1차 판단 14일로 확정하고 자원봉사로 유지하는 프로젝트라 best effort 목표라는 문장을 덧붙였습니다. 나머지 이월 항목은 P7-5와 P7-6에서 다룹니다.
   - 진행(2026-10-25, P7-5 백엔드): mock_repo와 starter의 클라이언트 오류 12종에 `[CODE]` 접미를 붙였습니다(입력 오류는 `[INVALID_INPUT]`, 파일 없음은 `File not found: ... [FILE_NOT_FOUND]`, HTTP 404는 `Resource not found: ... [NOT_FOUND]`). 테스트가 태그까지 확인하고 starter 시나리오 세 건에 `error_code`를 넣었으며, 잘못된 audience 프롬프트의 기대 코드는 `PROMPT_ERROR`에서 `INVALID_INPUT`으로 바뀌었어요. mock_repo `HttpBackendClient`는 첫 호출에 만든 `AsyncClient`를 재사용하고 서버 lifespan 종료 때 닫습니다(재시도 횟수와 동작은 그대로). `make test` 607, HTTP 9, CLI 151, starter 시나리오 15/15 통과입니다
