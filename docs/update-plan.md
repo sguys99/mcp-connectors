@@ -515,7 +515,7 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 | 순서 | 묶음 | 포함 항목 | 상태 |
 |---|---|---|---|
 | P7-1 | 사전 점검과 결정 반영 | 작업 트리 비식별화 grep과 `gitleaks dir`, LICENSE 저작권자, SECURITY.md 기한, 9장 결정 기록, 작성자 이메일 | ✅ |
-| P7-2 | 히스토리 정리 | bundle 백업, orphan 커밋, force push, 원격 브랜치 삭제, 정리 후 `gitleaks git` 0건 (오케스트레이터 직접) | ⬜ |
+| P7-2 | 히스토리 정리 | bundle 백업, orphan 커밋, force push, 원격 브랜치 삭제, 정리 후 `gitleaks git` 0건 (오케스트레이터 직접) | ✅ |
 | P7-3 | 캐시 삭제 요청 | GitHub Support sensitive data removal 요청문 초안 (P7-4와 병렬) | ⬜ |
 | P7-4 | CI와 Docker 검증 | GitHub Actions(ruff, pytest, frontend lint/test/build, Playwright, gitleaks), compose up 후 헬스 체크 | ⬜ |
 | P7-5 | 이월 코드 항목 | `[CODE]` 접미, mock_repo HTTP 클라이언트 재사용, ajv 정적 import, Inspector와 Chat 모바일 성능, Chat CLS | ⬜ |
@@ -524,12 +524,14 @@ Oracle 종속 코드는 `db/connector.py`, `enforce_row_limit.py`(`ROWNUM`, `FET
 | P7-8 | 홍보 채널 | MCP 서버 목록 저장소 제출안, 커뮤니티 게시글 초안 | ⬜ |
 | P7-9 | 완료 검증과 릴리스 | 깨끗한 clone에서 Quick Start, CI 녹색, CHANGELOG 0.1.0, 태그와 GitHub Release | ⬜ |
 
-- [ ] **히스토리 정리 (최우선)**: 정리 전 히스토리를 로컬 백업 브랜치와 저장소 밖 git bundle로 보존한 뒤, 현재 상태를 orphan 커밋 하나로 압축해(작성자는 GitHub noreply 주소) `main`에 force push합니다. 원격 `revamp/phase-*` 브랜치 6개는 지웁니다. 방식은 아래 9장의 결정을 따릅니다
+- [x] **히스토리 정리 (최우선)**: 정리 전 히스토리를 로컬 백업 브랜치와 저장소 밖 git bundle로 보존한 뒤, 현재 상태를 orphan 커밋 하나로 압축해(작성자는 GitHub noreply 주소) `main`에 force push합니다. 원격 `revamp/phase-*` 브랜치 6개는 지웁니다. 방식은 아래 9장의 결정을 따릅니다
+  - 완료(2026-10-25, P7-2): P7-1 변경을 커밋한 뒤(커밋 148개) 저장소 밖에 `mcp-connectors-history-backup-20261025.bundle`(10MB, 모든 ref 17개)을 만들고, 별도 clone으로 복원해 커밋 148개를 확인했습니다. 로컬 브랜치 `backup/pre-squash-20261025`도 남겼어요. orphan 커밋 `f526e9e`(작성자와 커미터 모두 noreply 주소)는 백업의 마지막 트리와 차이가 없고, push 전 `gitleaks git` 결과는 0건입니다. force push는 사용자가 직접 실행했고(`77ef2c1...f526e9e`), 원격 `revamp/phase-*` 6개는 오케스트레이터가 지웠습니다. 확인 결과 원격은 커밋 1개, 브랜치 `main` 하나, 태그와 PR은 없습니다. 로컬 `revamp/phase-*` 브랜치는 지우지 않고 그대로 두었으므로 `git push --all`은 쓰지 않습니다
 - [ ] GitHub Support에 캐시된 커밋과 PR 화면 삭제 요청 (sensitive data removal)
 - [ ] GitHub Actions CI: ruff, pytest, frontend lint/test/build, Playwright E2E, gitleaks
 - [ ] Docker 이미지 빌드 검증 (CI에서 compose up 후 헬스 체크)
-- [ ] 최종 비식별화 grep과 gitleaks 재검사 (작업 트리와 정리 후 히스토리 모두, `gitleaks git .` 0건)
+- [x] 최종 비식별화 grep과 gitleaks 재검사 (작업 트리와 정리 후 히스토리 모두, `gitleaks git .` 0건)
   - 진행(2026-10-25, P7-1): 작업 트리 검사를 마쳤습니다. 추적 파일 598개를 `redaction-map.md`의 원문(회사명, 사내 시스템명, 벤더명, 동료 실명, 내부 도메인, `cardops`/`salesdw`, 로컬 절대 경로, 예전 Oracle 호스트와 비밀번호)으로 대소문자 무시 grep한 결과, 진짜 잔존은 `docs/mcp-spec/nl2sql-mcp_v0.1.md`의 2건(`KB 정보보호 정책`, `금융사 데이터 거버넌스`)이었고 `기업 ...`으로 바꿨습니다. 나머지 일치는 `KB`(킬로바이트), `CardContent` 같은 오탐이에요. 관리자 이메일은 SECURITY.md와 CODE_OF_CONDUCT.md에만 있고 실명은 없습니다. PNG에는 텍스트 청크가 없고 SVG와 GIF에도 경로나 이메일이 없으며, 추적되는 `.env`는 `.env.example` 5개뿐입니다. `gitleaks dir . --config .gitleaks.toml --redact` 결과는 0건입니다. 정리 후 히스토리 재검사(`gitleaks git .`)는 P7-2에서 합니다.
+  - 완료(2026-10-25, P7-2): 정리 후 히스토리를 새로 받은 public clone에서 다시 검사했습니다. `rev-list --all` 커밋 1개, `gitleaks git` 0건(`.gitleaks.toml` 적용)이고, 트리가 P7-1에서 검사한 작업 트리와 같으므로 비식별화 grep 결과(0건)도 그대로 유효합니다
 - [x] 프로젝트 이름 최종 확정 (아래 9장 참고). 이름을 바꾸면 문서의 저장소 주소를 일괄 치환합니다
   - 완료(2026-10-25, P7-1): `mcp-connectors`를 그대로 씁니다. 이름이 바뀌지 않아 문서 주소 치환은 필요 없습니다.
 - [ ] 저장소 설정: description, topics(`mcp`, `model-context-protocol`, `fastmcp`, `claude`, `mcp-inspector`), 소셜 프리뷰 이미지
