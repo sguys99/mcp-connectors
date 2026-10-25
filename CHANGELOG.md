@@ -2,22 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once `0.1.0` is released.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) starting with `0.1.0`.
 
 ## [Unreleased]
 
-### Changed
+## [0.1.0] - 2026-10-25
 
-- Frontend dependencies updated for security (zod 4.6.7, happy-dom 21, body-parser 2.4 through the MCP SDK, postcss-selector-parser 7.1) and the npm minor/patch group (React 19.3, Base UI 1.9, Playwright 1.64, and others).
-- Node.js moves to the 24 LTS line (Frontend image `node:24-alpine`, CI, `engines`, `.nvmrc`).
+The first public release. It packages the MVP, the revamp phases 0 to 6, and the release preparation of phase 7.
 
-### Fixed
+Highlights:
 
-- The Frontend MCP client starts a new session and retries once when the server answers 404 for an expired session (the MCP Python SDK closes Streamable HTTP sessions idle for 30 minutes).
-
-## [0.1.0] (unreleased)
-
-The first public release. It packages the MVP and the revamp phases 0 to 6 (see `docs/update-plan.md`).
+- Three MCP servers in one layout: `starter_mcp` (canonical starter), `mock_repo_mcp` (mock backend baseline), and `nl2sql_mcp`, an NL2SQL guardrail reference that runs agent-written SQL behind read-only enforcement, row and date limits, scan blocking, PII control, and an audit log.
+- Shared `_common` security modules: API key auth, CORS, `.env` loading, errors with `[CODE]` tags, JSON logging, PII masking, retry, and untrusted content wrapping.
+- A CLI and a generic scenario runner with JUnit XML output, plus pytest suites for every server.
+- A local web UI with a Dashboard, an Inspector, an LLM Chat with a trace waterfall, and Settings, in English and Korean, light and dark.
+- One-command start with Docker Compose, and an optional PostgreSQL 17 sample database (Pagila) for NL2SQL.
+- Claude Code skills that turn a 10-section spec into a server, tests, scenarios, and registry entries.
+- GitHub Actions CI for lint, tests, scenarios, integration, Frontend build, Playwright, secret scanning, and the Docker stack.
 
 ### Added
 
@@ -36,7 +37,8 @@ The first public release. It packages the MVP and the revamp phases 0 to 6 (see 
 - Generic scenario runner `mcp_cli.py test <file|dir>` with a documented YAML format (`docs/scenario-format.md`, `configs/schemas/scenario.schema.json`), tag and id filters, and JUnit XML output (`--junit`).
 - NL2SQL scenario suite (`make test-scenarios`, `make test-scenarios-real`) and a starter scenario suite (`make test-scenarios-starter`).
 - pytest suites for every server, `_common`, the HTTP transport (with the API key on and off), and the CLI, plus integration tests against the sample database (`make test-integration`).
-- Playwright end-to-end tests with a fake LLM for Chat (`make test-e2e`).
+- Playwright end-to-end tests with a fake LLM for Chat (`make test-e2e`), including screen reader approximation checks with axe (landmarks, headings, live regions, focus management).
+- GitHub Actions CI with parallel jobs for ruff, pytest and scenarios, integration against the sample database, Frontend lint, typecheck, vitest and build, Playwright, gitleaks over the full history, and a Docker Compose build and health check. Dependabot watches uv, npm, GitHub Actions, and Docker.
 
 **Frontend**
 
@@ -68,10 +70,17 @@ The first public release. It packages the MVP and the revamp phases 0 to 6 (see 
 - The OpenRouter default model is `anthropic/claude-sonnet-4.6`. The old default `anthropic/claude-sonnet-4-6`, which OpenRouter does not list, is migrated automatically in saved settings.
 - Tool descriptions of the starter and mock_repo servers no longer contain reStructuredText markup or developer notes.
 - The Dashboard first paint is lighter on mobile: the Getting started card renders on the server and three dialogs load on first open.
+- Smaller first load: the MCP SDK's JSON schema validator (ajv) loads only when a tool with an `outputSchema` is called, Markdown rendering and YAML load on first use, and Chat reserves its sidebar space up front (no layout shift). First load JS dropped by 15 to 25 percent per page.
+- Dependencies updated for security: Python `mcp` 1.30 and `fastmcp` 3.4 (capped below the next major), starlette, cryptography, pyjwt, and others; Frontend React 19.3, Base UI 1.9, zod 4.6, happy-dom 21, and the npm minor and patch group. `npm audit` reports no findings.
+- Node.js moves to the 24 LTS line (Frontend image `node:24-alpine`, CI, `engines`, `.nvmrc`).
+- Client errors of the starter and mock_repo servers end with a `[CODE]` tag, and the mock_repo HTTP backend reuses one HTTP client.
 
 ### Fixed
 
 - Health checks now close their MCP session after each check. Before, each check left a GET SSE stream open, so two app tabs could use up the browser's six connections per host and stall `/api/chat`.
+- The Frontend MCP client starts a new session and retries once when the server answers 404 for an expired session (the MCP Python SDK closes Streamable HTTP sessions idle for 30 minutes). Before, the page stopped working until a reload.
+- Accessibility: the command palette button and the language toggle have accessible names that match their visible text, Refresh all keeps focus while busy, toggles no longer announce their state twice, required Inspector arguments carry `aria-required` and invalid runs move focus to the first error, and stopping a Chat run before the first reply is announced.
+- The Chat thread no longer stops following new content when the browser moves the scroll position by itself (content that shrinks and grows again in one frame). Only wheel, touch, keyboard, pointer, or focus input from the user detaches it.
 
 ### Security
 
@@ -82,7 +91,8 @@ The first public release. It packages the MVP and the revamp phases 0 to 6 (see 
 - Manual approval tokens are HMAC signed (`CHAT_APPROVAL_SECRET`), single use, and expire after 30 minutes. `/api/chat` rejects cross-origin requests.
 - Secrets are hidden in the Inspector log, call history, and exports.
 - gitleaks runs as a pre-commit hook with project rules in `.gitleaks.toml`. Credentials found in early documents were removed, and internal names were replaced with generic examples.
-- Frontend dependencies were updated to resolve `npm audit` findings.
+- Frontend dependencies were updated to resolve `npm audit` findings, and Python dependencies were updated to resolve Dependabot alerts.
+- Private vulnerability reporting, secret scanning, and push protection are enabled for the repository.
 
 ### Removed
 

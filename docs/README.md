@@ -26,6 +26,7 @@ Related documents outside `docs/`:
 | [mcp-spec/](mcp-spec/) | MCP server specs written with `/mcp-spec-writer`, one per server (`<server-name>_v0.X.md`) | Korean |
 | [assets/](assets/) | Diagrams (light and dark SVG), screenshots, and demo GIFs used by the READMEs and these guides | |
 | [launch/promotion-kit.md](launch/promotion-kit.md) | Where to list and announce the project (awesome lists, directories, Show HN, Reddit, GeekNews), their submission rules, and ready-to-paste drafts | English, Korean posts |
+| [launch/release-notes-v0.1.0.md](launch/release-notes-v0.1.0.md) | The GitHub release text for v0.1.0: highlights, quick start, what is included, and known limitations | English |
 
 ## NL2SQL test plan and data
 
