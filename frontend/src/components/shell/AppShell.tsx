@@ -35,6 +35,7 @@ import {
   type ServerDialogState,
   type ShellApi,
   type ShellMeta,
+  type SlotState,
   type SlotTargets,
 } from "./shell-context";
 import { ShortcutProvider, useShortcut } from "./shortcuts";
@@ -99,8 +100,8 @@ function ShellFrame({ servers, runtimeProxyEnabled = false, children }: AppShell
   const [configTarget, setConfigTarget] = useState<string | null>(null);
 
   const [metaStore] = useState<Store<ShellMeta>>(() => createStore<ShellMeta>({}));
-  const [filledStore] = useState<Store<boolean>>(() => createStore(false));
-  const slotFilled = useSyncExternalStore(filledStore.subscribe, filledStore.get, filledStore.getInitial);
+  const [filledStore] = useState<Store<SlotState>>(() => createStore<SlotState>("pending"));
+  const slotState = useSyncExternalStore(filledStore.subscribe, filledStore.get, filledStore.getInitial);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMobile = useMediaQuery(MOBILE_QUERY);
@@ -118,7 +119,7 @@ function ShellFrame({ servers, runtimeProxyEnabled = false, children }: AppShell
   const [mobileTarget, setMobileTarget] = useState<HTMLElement | null>(null);
 
   const kind = sidebarKindFor(pathname);
-  const hasSidebar = kind === "explorer" || (kind === "slot" && slotFilled);
+  const hasSidebar = kind === "explorer" || (kind === "slot" && slotState !== "empty");
 
   const goToServer = useCallback(
     (name: string, forceInspector: boolean) => {

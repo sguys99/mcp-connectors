@@ -17,7 +17,7 @@ import { DEFAULT_MAX_ITERATIONS } from "@/lib/llm/constants";
 import { formatDuration } from "@/lib/trace/scale";
 import { cn } from "@/lib/utils";
 
-import { ChatMarkdown } from "./Markdown";
+import { ChatMarkdown } from "./LazyMarkdown";
 import { ToolCard, toolCardStatus, type TurnPhase } from "./ToolCard";
 
 export interface LinkProps {

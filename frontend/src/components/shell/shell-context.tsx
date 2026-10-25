@@ -36,8 +36,11 @@ export interface ShellMeta {
   sample?: boolean;
 }
 
+export type SlotState = "pending" | "filled" | "empty";
+
 export interface SlotTargets {
-  filledStore: Store<boolean>;
+  // pending: 화면이 아직 정하지 않음(사이드바 열을 미리 잡아 둔다), filled: 채움, empty: 이 화면은 채우지 않음
+  filledStore: Store<SlotState>;
   desktopTarget: HTMLElement | null;
   mobileTarget: HTMLElement | null;
   isMobile: boolean;
@@ -125,9 +128,22 @@ export function SidebarSlot({ children }: { children: ReactNode }) {
   if (!slot) throw new Error("SidebarSlot must be used inside <AppShell>");
   const { filledStore } = slot;
   useEffect(() => {
-    filledStore.set(true);
-    return () => filledStore.set(false);
+    filledStore.set("filled");
+    return () => filledStore.set("pending");
   }, [filledStore]);
   const target = slot.isMobile ? slot.mobileTarget : slot.desktopTarget;
   return target ? createPortal(children, target) : null;
+}
+
+// 사이드바를 쓰지 않는 상태(예: Chat 에 연결할 서버가 없음)를 셸에 알린다. 사이드바 열을 접는다.
+// SidebarSlot 이 마운트되기 전에는 첫 페인트의 레이아웃 이동을 막으려고 열을 미리 잡아 두기 때문에 필요하다.
+export function SidebarSlotEmpty() {
+  const slot = useContext(SlotContext);
+  if (!slot) throw new Error("SidebarSlotEmpty must be used inside <AppShell>");
+  const { filledStore } = slot;
+  useEffect(() => {
+    filledStore.set("empty");
+    return () => filledStore.set("pending");
+  }, [filledStore]);
+  return null;
 }

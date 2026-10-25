@@ -15,6 +15,7 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { JsonSchemaValidator, jsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/types.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 
@@ -41,6 +42,19 @@ import type {
 } from "./types";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+
+// 도구 outputSchema 검증기. SDK 기본값은 ajv 이고 서버(Route Handler, SSR)에서는 그대로 쓴다.
+// 브라우저는 ajv 를 번들에서 뺐으므로(next.config.ts) 검증을 건너뛰는 검증기를 넘긴다. 이때 structuredContent 가
+// outputSchema 와 어긋나도 SDK 가 호출을 오류로 바꾸지 않고 서버가 보낸 그대로 Inspector 에 보여 준다.
+// 출력 검증은 FastMCP 서버가 응답 전에 하고, Chat(/api/chat)과 서버 쪽 호출은 계속 ajv 로 검증한다.
+function browserSchemaValidator(): jsonSchemaValidator | undefined {
+  if (typeof window === "undefined") return undefined;
+  return {
+    getValidator<T>(): JsonSchemaValidator<T> {
+      return (input) => ({ valid: true, data: input as T, errorMessage: undefined });
+    },
+  };
+}
 const CLIENT_INFO = { name: "mcp-connectors-frontend", version: "0.1.0" };
 
 export interface CallToolOptions {
@@ -280,7 +294,7 @@ export function createMCPClient(server: ServerConfig | PublicServer, clientOptio
           }
         });
       }
-      const client = new Client(CLIENT_INFO, {});
+      const client = new Client(CLIENT_INFO, { jsonSchemaValidator: browserSchemaValidator() });
       await client.connect(transport);
       activeTransport = transport;
       return client;

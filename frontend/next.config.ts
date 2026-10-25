@@ -36,6 +36,14 @@ loadRootEnvKeys();
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  turbopack: {
+    // MCP SDK 의 Client 가 정적으로 끌어오는 ajv(약 90KB gzip)를 브라우저 번들에서 뺀다.
+    // 브라우저에서는 lib/mcp/client.ts 가 도구 출력 검증기를 직접 넘기고, 서버는 영향이 없다.
+    resolveAlias: {
+      ajv: { browser: "./src/lib/mcp/ajv-browser-stub.ts" },
+      "ajv-formats": { browser: "./src/lib/mcp/ajv-browser-stub.ts" },
+    },
+  },
 };
 
 export default nextConfig;

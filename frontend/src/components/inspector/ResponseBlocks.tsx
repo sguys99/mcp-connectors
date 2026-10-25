@@ -12,7 +12,7 @@
 import { BanIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { ChatMarkdown } from "@/components/chat/Markdown";
+import { ChatMarkdown } from "@/components/chat/LazyMarkdown";
 import { CopyIconButton } from "@/components/dashboard/CopyCommand";
 import { Chip, type ChipTone } from "@/components/ui/chip";
 import { useT } from "@/lib/i18n/client";

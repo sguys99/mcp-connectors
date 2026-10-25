@@ -29,7 +29,7 @@ import { ToolsExposed } from "@/components/chat/ToolsExposed";
 import { TracePanel, type TraceTurnView } from "@/components/chat/TracePanel";
 import { useClock } from "@/components/chat/use-clock";
 import { useHealthMap } from "@/components/shell/health-store";
-import { useShell, useShellMeta, SidebarSlot } from "@/components/shell/shell-context";
+import { useShell, useShellMeta, SidebarSlot, SidebarSlotEmpty } from "@/components/shell/shell-context";
 import { useMediaQuery, MOBILE_QUERY } from "@/components/shell/use-media-query";
 import { ChatSkeleton } from "@/components/skeletons/screens";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -541,6 +541,7 @@ export default function ChatShell({
   if (reachable.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10">
+        <SidebarSlotEmpty />
         <h1 className="mb-3 text-2xl font-semibold">{t("chat.title")}</h1>
         <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
           {t.rich("chat.noServers", {

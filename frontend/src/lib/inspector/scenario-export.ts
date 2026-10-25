@@ -64,7 +64,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_SHAPE = "^\\d{4}-\\d{2}-\\d{2}T";
 const UUID_SHAPE = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
-export const isExportable = (entry: HistoryEntry): boolean => entry.status !== "cancelled" && entry.outcome !== "transport";
+import { isExportable } from "./exportable";
+
+export { isExportable };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v);
