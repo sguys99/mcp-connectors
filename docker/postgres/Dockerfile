@@ -6,7 +6,7 @@
 #
 # 5ba5a57 을 고른 이유: 이후 커밋(2026-07~)은 pgvector 확장과 PostgreSQL 18 이상을 요구하고
 # 샘플 데이터도 바뀌어, Mock 백엔드와 시나리오가 기준으로 삼은 Pagila 3.x 와 달라집니다.
-FROM postgres:17.10-alpine
+FROM postgres:17.11-alpine
 
 ARG PAGILA_COMMIT=5ba5a57aeb159f75f02aca2432d3c262186d13d3
 
